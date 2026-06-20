@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 chrono = "0.4"
 csv = "1.4"
+serde = "1.0"
