@@ -6,6 +6,7 @@ use serde::Deserialize;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
@@ -195,29 +196,45 @@ fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
 }
 
 fn check_file() -> Result<(), std::io::Error> {
+    const CSV_HEADER: &[u8; 22] = b"date,time,sys,dia,pul\n";
+
     let path_string = get_file_path_string();
     let path_file = Path::new(&path_string);
+    let mut fh: File;
 
     if path_file.exists() {
-        return Ok(());
+        let file_meta = fs::metadata(path_file).expect("unable to read metadata");
+        println!("metadata len: {:?}", file_meta.len());
+
+        if file_meta.len() > 0 {
+            let f_read = File::open(path_file)?;
+            let mut buffer = [0; 22];
+
+            // read at most 22 bytes
+            let mut handle = f_read.take(22);
+            handle.read(&mut buffer)?;
+
+            if *CSV_HEADER == buffer {
+                return Ok(());
+            } else {
+                panic!(
+                    "File '{}' has content, but is missing csv header!",
+                    path_string
+                );
+            }
+        }
+        log_message(&format!("Empty File '{}' missing csv header.", path_string));
+
+        fh = File::create(path_file)?;
+    } else {
+        log_warning(&format!("File '{}' missing.", path_file.display()));
+
+        fh = File::create_new(path_file)?;
+        log_message(&format!("Empty File '{}' created.", path_string));
     }
-    log_warning(&format!("File '{}' missing.", path_file.display()));
 
-    let mut fh = match File::create_new(path_file) {
-        Ok(f) => {
-            log_message(&format!("File '{}' created.", path_file.display()));
-            f
-        }
-        Err(e) => {
-            log_error(&format!(
-                "Unable to create new File '{}'.",
-                path_file.display()
-            ));
-            return Err(e);
-        }
-    };
-
-    writeln!(fh, "date,time,sys,dia,pul")?;
+    fh.write_all(CSV_HEADER)?;
+    log_message(&format!("Csv header added to File '{}'.", path_string));
 
     Ok(())
 }
