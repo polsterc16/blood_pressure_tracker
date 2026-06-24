@@ -6,8 +6,7 @@ use serde::Deserialize;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Read;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 #[derive(Debug, Parser)]
@@ -196,25 +195,27 @@ fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
 }
 
 fn check_file() -> Result<(), std::io::Error> {
-    const CSV_HEADER: &[u8; 22] = b"date,time,sys,dia,pul\n";
+    const CSV_HEADER: &str = "date,time,sys,dia,pul";
 
     let path_string = get_file_path_string();
     let path_file = Path::new(&path_string);
-    let mut fh: File;
+    let fh: File;
 
     if path_file.exists() {
         let file_meta = fs::metadata(path_file).expect("unable to read metadata");
-        println!("metadata len: {:?}", file_meta.len());
+        // println!("metadata len: {:?}", file_meta.len());
 
         if file_meta.len() > 0 {
             let f_read = File::open(path_file)?;
-            let mut buffer = [0; 22];
+            let reader = BufReader::new(f_read);
 
-            // read at most 22 bytes
-            let mut handle = f_read.take(22);
-            handle.read(&mut buffer)?;
+            let mut lines = reader.lines();
+            let line = lines
+                .next()
+                .expect("Unable to read first Line of File")
+                .expect("Unable to read first Line of File");
 
-            if *CSV_HEADER == buffer {
+            if CSV_HEADER == &line[..] {
                 return Ok(());
             } else {
                 panic!(
@@ -233,7 +234,11 @@ fn check_file() -> Result<(), std::io::Error> {
         log_message(&format!("Empty File '{}' created.", path_string));
     }
 
-    fh.write_all(CSV_HEADER)?;
+    if let Err(e) = writeln!(&fh, "{}", CSV_HEADER) {
+        eprintln!("Could not write to File: {}", e);
+    }
+
+    fh.sync_all()?;
     log_message(&format!("Csv header added to File '{}'.", path_string));
 
     Ok(())
