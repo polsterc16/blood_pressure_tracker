@@ -2,6 +2,7 @@
 name = "blood_pressure_tracker"
 version = "0.1.0"
 edition = "2024"
+description = "Simple command line app to track blood pressure measurements"
 
 [dependencies]
 chrono = "0.4"
