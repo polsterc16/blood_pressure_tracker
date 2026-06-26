@@ -156,25 +156,7 @@ fn main() {
         let mut csv_entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
 
         if cli.rebuild {
-            // worker_csv_rebuild();
-
-            csv_entries.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
-
-            let path_string = get_file_path_string();
-            let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
-
-            println!("Sorted entries:");
-            // for entry in &csv_entries {
-            for (index, entry) in (&csv_entries).iter().enumerate() {
-                let csv_line = entry.get_csv_entry();
-                println!("[{}] {:?}", index, csv_line);
-
-                writeln!(&fh_csv, "{}", csv_line).expect(&format!(
-                    "Could not write to File '{path_string}': Entry [{index}] '{csv_line}'."
-                ));
-            }
-
-            return;
+            worker_csv_rebuild(&mut csv_entries);
         }
         if cli.output {
             // worker_pdf_output();
@@ -187,49 +169,25 @@ fn main() {
     return;
 }
 
-fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
-    let path_file = Path::new(path_str);
+fn worker_csv_rebuild(csv_entries: &mut Vec<Measurement>) {
+    csv_entries.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
 
-    let fh_csv: File;
-    match mode {
-        CsvOpenMode::Read => {
-            fh_csv = OpenOptions::new()
-                .read(true)
-                .open(path_file)
-                .expect(&format!(
-                    "Unable to open File '{}' in {:?}.",
-                    path_str, mode
-                ));
-        }
-        CsvOpenMode::WriteReset => {
-            fh_csv = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(path_file)
-                .expect(&format!(
-                    "Unable to open File '{}' in {:?}.",
-                    path_str, mode
-                ));
+    let path_string = get_file_path_string();
+    let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
 
-            // Write CSV header line
-            writeln!(&fh_csv, "{}", CSV_HEADER).expect(&format!(
-                "Could not write to File '{}' in {:?}.",
-                path_str, mode
-            ));
-        }
-        CsvOpenMode::WriteAppend => {
-            fh_csv = OpenOptions::new()
-                .write(true)
-                .append(true)
-                .open(path_file)
-                .expect(&format!(
-                    "Unable to open File '{}' in {:?}.",
-                    path_str, mode
-                ));
-        }
+    // println!("Sorted entries:");
+    // for entry in &csv_entries {
+    for (index, entry) in (&*csv_entries).iter().enumerate() {
+        let csv_line = entry.get_csv_entry();
+        // println!("[{}] {:?}", index, csv_line);
+
+        writeln!(&fh_csv, "{}", csv_line).expect(&format!(
+            "Could not write to File '{path_string}': Entry [{index}] '{csv_line}'."
+        ));
     }
     fh_csv
+        .sync_all()
+        .expect(&format!("Unable to save File '{path_string}'."));
 }
 
 fn worker_csv_status(csv_entries: &Vec<Measurement>) {
@@ -284,12 +242,61 @@ fn worker_init_csv() {
     check_file().expect("Unable to perform 'Check of work File'.");
 }
 
+// ################################################################
+
+fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
+    let path_file = Path::new(path_str);
+
+    let fh_csv: File;
+    match mode {
+        CsvOpenMode::Read => {
+            fh_csv = OpenOptions::new()
+                .read(true)
+                .open(path_file)
+                .expect(&format!(
+                    "Unable to open File '{}' in {:?}.",
+                    path_str, mode
+                ));
+        }
+        CsvOpenMode::WriteReset => {
+            fh_csv = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(path_file)
+                .expect(&format!(
+                    "Unable to open File '{}' in {:?}.",
+                    path_str, mode
+                ));
+
+            // Write CSV header line
+            writeln!(&fh_csv, "{}", CSV_HEADER).expect(&format!(
+                "Could not write to File '{}' in {:?}.",
+                path_str, mode
+            ));
+        }
+        CsvOpenMode::WriteAppend => {
+            fh_csv = OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(path_file)
+                .expect(&format!(
+                    "Unable to open File '{}' in {:?}.",
+                    path_str, mode
+                ));
+        }
+    }
+    fh_csv
+}
+
 fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
     let path_string = get_file_path_string();
     let path_file = Path::new(&path_string);
 
-    let fh = File::open(path_file)?;
-    let mut rdr = csv::ReaderBuilder::new().delimiter(b',').from_reader(fh);
+    let fh_csv = File::open(path_file)?;
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(b',')
+        .from_reader(fh_csv);
 
     // let records_iter = rdr.deserialize();
 
