@@ -1,3 +1,4 @@
+#![allow(unused)]
 use chrono::Local;
 use clap::{Args, Parser};
 use serde::Deserialize;
@@ -66,7 +67,7 @@ impl BlPrArgs {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum BlPrArgState {
     Empty,
     Valid,
@@ -94,9 +95,30 @@ impl Measurement {
         };
     }
 
-    // pub fn get_measurement(&self) -> (f32, f32, f32) {
-    //     (self.sys, self.dia, self.pul)
-    // }
+    pub fn get_bp(&self) -> (f32, f32, f32) {
+        (self.sys, self.dia, self.pul)
+    }
+    pub fn get_bp_sys(&self) -> f32 {
+        self.sys
+    }
+    pub fn get_bp_dia(&self) -> f32 {
+        self.dia
+    }
+    pub fn get_bp_pul(&self) -> f32 {
+        self.pul
+    }
+    pub fn get_date(&self) -> &str {
+        &self.date[..]
+    }
+    pub fn get_time(&self) -> &str {
+        &self.time[..]
+    }
+    pub fn get_csv_entry(&self) -> String {
+        format!(
+            "{},{},{:.1},{:.1},{:.1}",
+            self.date, self.time, self.sys, self.dia, self.pul
+        )
+    }
 }
 
 // ################################################################
@@ -104,10 +126,6 @@ impl Measurement {
 fn main() {
     let cli = Cli::parse();
     println!("CLI: {:?}\n", cli);
-
-    // let bp = &cli.bp;
-    // let show_status = &cli.status;
-    // let generate_output = &cli.output;
 
     worker_init_csv();
 
@@ -120,21 +138,23 @@ fn main() {
     };
 
     return;
-
-    // run().unwrap();
 }
 
 fn worker_csv_status() {
     let date_ym = get_date_ym();
     let entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
-    let l = entries.len();
-    let r = if l <= 5 { 0..l } else { (l - 5)..l };
+    let csv_len = entries.len();
+    let csv_tail_range = if csv_len <= 5 {
+        0..csv_len
+    } else {
+        (csv_len - 5)..csv_len
+    };
 
-    println!("File for '{date_ym}' contains {l} entries.");
+    println!("File for '{date_ym}' contains {csv_len} entries.");
 
-    if l > 0 {
+    if csv_len > 0 {
         println!("Latest entries:");
-        for i in r {
+        for i in csv_tail_range {
             println!("[{}] {:?}", i + 1, entries[i]);
         }
     }
@@ -148,22 +168,18 @@ fn worker_bp_add(cli: &Cli) {
         BlPrArgState::Empty => return,
         BlPrArgState::Invalid => panic!("Invalid Blood Pressure args!"),
     }
-    let m = bp.to_measurement();
+    let measurement = bp.to_measurement();
 
     let path_string = get_file_path_string();
     let path_file = Path::new(&path_string);
 
-    let fh = OpenOptions::new()
+    let fh_csv = OpenOptions::new()
         .write(true)
         .append(true)
         .open(path_file)
-        .expect(&format!("Unable to open File '{}'.", path_file.display()));
+        .expect(&format!("Unable to open File '{}'.", path_string));
 
-    if let Err(e) = writeln!(
-        &fh,
-        "{},{},{:.1},{:.1},{:.1}",
-        m.date, m.time, m.sys, m.dia, m.pul
-    ) {
+    if let Err(e) = writeln!(&fh_csv, "{}", measurement.get_csv_entry()) {
         eprintln!("Couldn't write to file: {}", e);
     }
 }
