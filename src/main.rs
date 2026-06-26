@@ -153,10 +153,10 @@ fn main() {
     worker_bp_add(&cli);
 
     if cli.qry_read_csv() {
-        let mut csv_entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
+        let csv_entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
 
         if cli.rebuild {
-            worker_csv_rebuild(&mut csv_entries);
+            worker_csv_rebuild(&csv_entries);
         }
         if cli.output {
             // worker_pdf_output();
@@ -170,10 +170,7 @@ fn main() {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_entries: &mut Vec<Measurement>) {
-    // Sort vector of Measurement `csv_entries` by date, time
-    csv_entries.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
-
+fn worker_csv_rebuild(csv_entries: &Vec<Measurement>) {
     let path_string = get_file_path_string();
     // Open CSV File and reset content
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
@@ -318,6 +315,9 @@ fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
         // println!("{:?}", entry);
         ret.push(entry);
     }
+
+    // Sort vector of Measurement by date, time
+    ret.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
 
     Ok(ret)
 }
