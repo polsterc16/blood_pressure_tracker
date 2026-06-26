@@ -23,6 +23,16 @@ struct Cli {
     /// Display status
     #[arg(short, long)]
     status: bool,
+
+    /// Rebuild CSV file
+    #[arg(short, long)]
+    rebuild: bool,
+}
+impl Cli {
+    /// Returns true, if at least one option is set that requires reading the CSV file content.
+    fn qry_read_csv(&self) -> bool {
+        return self.output || self.status || self.rebuild;
+    }
 }
 
 #[derive(Debug, Args)]
@@ -131,31 +141,40 @@ fn main() {
 
     worker_bp_add(&cli);
 
-    if cli.output {
-        // worker_pdf_output();
-    } else if cli.status {
-        worker_csv_status();
-    };
+    if cli.qry_read_csv() {
+        let csv_entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
+
+        if cli.rebuild {
+            // worker_csv_rebuild();
+        }
+        if cli.output {
+            // worker_pdf_output();
+        }
+        if cli.status {
+            worker_csv_status(&csv_entries);
+        }
+    }
 
     return;
 }
 
-fn worker_csv_status() {
+fn worker_csv_status(csv_entries: &Vec<Measurement>) {
     let date_ym = get_date_ym();
-    let entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
-    let csv_len = entries.len();
-    let csv_tail_range = if csv_len <= 5 {
-        0..csv_len
-    } else {
-        (csv_len - 5)..csv_len
-    };
+    // let entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
 
+    let csv_len = csv_entries.len();
     println!("File for '{date_ym}' contains {csv_len} entries.");
 
     if csv_len > 0 {
+        let csv_tail_range = if csv_len <= 5 {
+            0..csv_len
+        } else {
+            (csv_len - 5)..csv_len
+        };
+
         println!("Latest entries:");
         for i in csv_tail_range {
-            println!("[{}] {:?}", i + 1, entries[i]);
+            println!("[{}] {:?}", i + 1, csv_entries[i]);
         }
     }
 }
@@ -173,12 +192,14 @@ fn worker_bp_add(cli: &Cli) {
     let path_string = get_file_path_string();
     let path_file = Path::new(&path_string);
 
+    // Open CSV file in 'append' mode
     let fh_csv = OpenOptions::new()
         .write(true)
         .append(true)
         .open(path_file)
         .expect(&format!("Unable to open File '{}'.", path_string));
 
+    // Append entry to CSV file
     if let Err(e) = writeln!(&fh_csv, "{}", measurement.get_csv_entry()) {
         eprintln!("Couldn't write to file: {}", e);
     }
