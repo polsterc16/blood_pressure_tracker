@@ -13,75 +13,21 @@ use std::path::Path;
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    #[command(flatten)]
-    bp: BlPrArgs,
+    /// Add blood pressure measurement
+    #[arg(short, long, num_args = 3, value_names=["sys","dia","pul"])]
+    add: Option<Vec<f32>>,
 
-    /// Generate output
-    #[arg(short, long)]
-    output: bool,
+    /// Generate Output (Default number of intervals = 2)
+    #[arg(short, long, value_name = "num_interval", default_missing_value = "2", num_args = 0..=1, value_parser = clap::value_parser!(u8).range(2..=12))]
+    output: Option<u8>,
 
-    /// Display status
+    /// Display status of CSV file
     #[arg(short, long)]
     status: bool,
 
     /// Rebuild CSV file
     #[arg(short, long)]
     rebuild: bool,
-}
-impl Cli {
-    /// Returns true, if at least one option is set that requires reading the CSV file content.
-    fn qry_read_csv(&self) -> bool {
-        return self.output || self.status || self.rebuild;
-    }
-}
-
-#[derive(Debug, Args)]
-#[group(multiple = true)]
-struct BlPrArgs {
-    /// Systolic blood pressure, mmHg
-    #[arg(requires_all=["dia","pul"])]
-    sys: Option<f32>,
-
-    /// Diastolic blood pressure, mmHg
-    #[arg(requires_all=["sys","pul"])]
-    dia: Option<f32>,
-
-    /// Heart rate, #pulses/min
-    #[arg(requires_all=["sys","dia"])]
-    pul: Option<f32>,
-}
-impl BlPrArgs {
-    fn check_state(self: &Self) -> BlPrArgState {
-        if self.sys.is_none() && self.dia.is_none() && self.pul.is_none() {
-            return BlPrArgState::Empty;
-        } else if self.sys.is_some() && self.dia.is_some() && self.pul.is_some() {
-            return BlPrArgState::Valid;
-        } else {
-            return BlPrArgState::Invalid;
-        };
-    }
-    fn to_measurement(&self) -> Measurement {
-        match self.check_state() {
-            BlPrArgState::Empty => {
-                panic!("Attempting to create Measurement from empty Blood Pressure args!")
-            }
-            BlPrArgState::Invalid => {
-                panic!("Attempting to create Measurement from invalid Blood Pressure args!")
-            }
-            BlPrArgState::Valid => (),
-        }
-        let sys = self.sys.unwrap();
-        let dia = self.dia.unwrap();
-        let pul = self.pul.unwrap();
-        return Measurement::new(sys, dia, pul);
-    }
-}
-
-#[derive(Debug, PartialEq)]
-enum BlPrArgState {
-    Empty,
-    Valid,
-    Invalid,
 }
 
 // ################################################################
@@ -146,20 +92,26 @@ const CSV_HEADER: &str = "date,time,sys,dia,pul";
 // ################################################################
 fn main() {
     let cli = Cli::parse();
-    println!("CLI: {:?}\n", cli);
+    println!("CLI: {:?}\n", &cli);
 
     worker_init_csv();
 
-    worker_bp_add(&cli);
+    match cli.add {
+        Some(bp) => worker_bp_add(&bp),
+        _ => (),
+    }
 
-    if cli.qry_read_csv() {
+    if cli.rebuild || cli.status || cli.output.is_some() {
         let csv_entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
 
         if cli.rebuild {
             worker_csv_rebuild(&csv_entries);
         }
-        if cli.output {
-            // worker_pdf_output();
+        match cli.output {
+            Some(num_interval) => {
+                worker_pdf_output(&csv_entries, num_interval);
+            }
+            _ => (),
         }
         if cli.status {
             worker_csv_status(&csv_entries);
@@ -167,6 +119,14 @@ fn main() {
     }
 
     return;
+}
+
+/// Will read the CSV file, sort measurements and overwrite the file
+fn worker_pdf_output(csv_entries: &Vec<Measurement>, num_interval: u8) {
+    let interval: f32 = 24.0f32 / (num_interval as f32);
+
+    let e_first = &csv_entries[0];
+    let e_last = &csv_entries[csv_entries.len() - 1];
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
@@ -212,15 +172,12 @@ fn worker_csv_status(csv_entries: &Vec<Measurement>) {
     }
 }
 
-fn worker_bp_add(cli: &Cli) {
-    let bp = &cli.bp;
+fn worker_bp_add(bp: &Vec<f32>) {
+    let sys = bp[0];
+    let dia = bp[1];
+    let pul = bp[2];
 
-    match bp.check_state() {
-        BlPrArgState::Valid => (),
-        BlPrArgState::Empty => return,
-        BlPrArgState::Invalid => panic!("Invalid Blood Pressure args!"),
-    }
-    let measurement = bp.to_measurement();
+    let measurement = Measurement::new(sys, dia, pul);
 
     let path_string = get_file_path_string();
 
