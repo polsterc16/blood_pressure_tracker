@@ -242,8 +242,15 @@ fn worker_bp_add(cli: &Cli) {
 }
 
 fn worker_init_csv() {
-    check_path().expect("Unable to perform 'Check of /data Directory'.");
-    check_file().expect("Unable to perform 'Check of work File'.");
+    let path_dir_string = get_dir_path_string();
+    let path_file_string = get_file_path_string();
+
+    check_path(&path_dir_string).expect(&format!(
+        "Unable to perform 'Check of Directory {path_dir_string}'."
+    ));
+    check_file(&path_file_string).expect(&format!(
+        "Unable to perform 'Check of work File {path_file_string}'."
+    ));
 }
 
 // ################################################################
@@ -315,9 +322,9 @@ fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
     Ok(ret)
 }
 
-fn check_file() -> Result<(), std::io::Error> {
-    let path_string = get_file_path_string();
-    let path_file = Path::new(&path_string);
+fn check_file(path_file_str: &str) -> Result<(), std::io::Error> {
+    // let path_string = get_file_path_string();
+    let path_file = Path::new(path_file_str);
     let fh: File;
 
     if path_file.exists() {
@@ -339,18 +346,21 @@ fn check_file() -> Result<(), std::io::Error> {
             } else {
                 panic!(
                     "File '{}' has content, but is missing csv header!",
-                    path_string
+                    path_file_str
                 );
             }
         }
-        log_message(&format!("Empty File '{}' missing csv header.", path_string));
+        log_message(&format!(
+            "Empty File '{}' missing csv header.",
+            path_file_str
+        ));
 
         fh = File::create(path_file)?;
     } else {
-        log_warning(&format!("File '{}' missing.", path_file.display()));
+        log_warning(&format!("File '{}' missing.", path_file_str));
 
         fh = File::create_new(path_file)?;
-        log_message(&format!("Empty File '{}' created.", path_string));
+        log_message(&format!("Empty File '{}' created.", path_file_str));
     }
 
     if let Err(e) = writeln!(&fh, "{}", CSV_HEADER) {
@@ -358,27 +368,26 @@ fn check_file() -> Result<(), std::io::Error> {
     }
 
     fh.sync_all()?;
-    log_message(&format!("Csv header added to File '{}'.", path_string));
+    log_message(&format!("Csv header added to File '{}'.", path_file_str));
 
     Ok(())
 }
 
-fn check_path() -> std::io::Result<()> {
-    let path_string = get_dir_path_string();
-    let path_dir = Path::new(&path_string);
+fn check_path(path_dir_str: &str) -> std::io::Result<()> {
+    let path_dir = Path::new(path_dir_str);
 
     if path_dir.exists() {
         return Ok(());
     }
-    log_warning(&format!("Directory '{}' missing.", path_string));
+    log_warning(&format!("Directory '{}' missing.", path_dir_str));
 
     match fs::create_dir(path_dir) {
         Ok(_) => {
-            log_message(&format!("Directory '{}' created.", path_string));
+            log_message(&format!("Directory '{}' created.", path_dir_str));
             Ok(())
         }
         Err(e) => {
-            log_error(&format!("Unable to create Directory '{}'.", path_string));
+            log_error(&format!("Unable to create Directory '{}'.", path_dir_str));
             Err(e)
         }
     }
