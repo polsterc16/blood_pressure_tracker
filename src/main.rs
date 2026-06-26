@@ -169,15 +169,18 @@ fn main() {
     return;
 }
 
+/// Will read the CSV file, sort measurements and overwrite the file
 fn worker_csv_rebuild(csv_entries: &mut Vec<Measurement>) {
+    // Sort vector of Measurement `csv_entries` by date, time
     csv_entries.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
 
     let path_string = get_file_path_string();
+    // Open CSV File and reset content
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
 
     // println!("Sorted entries:");
     // for entry in &csv_entries {
-    for (index, entry) in (&*csv_entries).iter().enumerate() {
+    for (index, entry) in (csv_entries).iter().enumerate() {
         let csv_line = entry.get_csv_entry();
         // println!("[{}] {:?}", index, csv_line);
 
@@ -185,6 +188,8 @@ fn worker_csv_rebuild(csv_entries: &mut Vec<Measurement>) {
             "Could not write to File '{path_string}': Entry [{index}] '{csv_line}'."
         ));
     }
+
+    // Save changes to disk
     fh_csv
         .sync_all()
         .expect(&format!("Unable to save File '{path_string}'."));
@@ -192,7 +197,6 @@ fn worker_csv_rebuild(csv_entries: &mut Vec<Measurement>) {
 
 fn worker_csv_status(csv_entries: &Vec<Measurement>) {
     let date_ym = get_date_ym();
-    // let entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
 
     let csv_len = csv_entries.len();
     println!("File for '{date_ym}' contains {csv_len} entries.");
@@ -222,19 +226,19 @@ fn worker_bp_add(cli: &Cli) {
     let measurement = bp.to_measurement();
 
     let path_string = get_file_path_string();
-    let path_file = Path::new(&path_string);
 
     // Open CSV file in 'append' mode
-    let fh_csv = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(path_file)
-        .expect(&format!("Unable to open File '{}'.", path_string));
+    let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteAppend);
 
     // Append entry to CSV file
     if let Err(e) = writeln!(&fh_csv, "{}", measurement.get_csv_entry()) {
         eprintln!("Couldn't write to file: {}", e);
     }
+
+    // Save changes to disk
+    fh_csv
+        .sync_all()
+        .expect(&format!("Unable to save File '{path_string}'."));
 }
 
 fn worker_init_csv() {
@@ -291,9 +295,8 @@ fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
 
 fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
     let path_string = get_file_path_string();
-    let path_file = Path::new(&path_string);
 
-    let fh_csv = File::open(path_file)?;
+    let fh_csv = open_csv_file(&path_string, CsvOpenMode::Read);
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b',')
         .from_reader(fh_csv);
