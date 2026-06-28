@@ -15,7 +15,7 @@ use std::path::Path;
 struct Cli {
     /// Add blood pressure measurement
     #[arg(short, long, num_args = 3, value_names=["sys","dia","pul"])]
-    add: Option<Vec<f32>>,
+    add: Option<Vec<u8>>,
 
     /// Generate Output (Default number of intervals = 2)
     #[arg(short, long, value_name = "num_interval", default_missing_value = "2", num_args = 0..=1, value_parser = clap::value_parser!(u8).range(2..=12))]
@@ -36,12 +36,12 @@ struct Cli {
 struct Measurement {
     date: String,
     time: String,
-    sys: f32,
-    dia: f32,
-    pul: f32,
+    sys: u8,
+    dia: u8,
+    pul: u8,
 }
 impl Measurement {
-    pub fn new(sys: f32, dia: f32, pul: f32) -> Measurement {
+    pub fn new(sys: u8, dia: u8, pul: u8) -> Measurement {
         return Measurement {
             date: get_date(),
             time: get_time(),
@@ -51,16 +51,16 @@ impl Measurement {
         };
     }
 
-    pub fn get_bp(&self) -> (f32, f32, f32) {
+    pub fn get_bp(&self) -> (u8, u8, u8) {
         (self.sys, self.dia, self.pul)
     }
-    pub fn get_bp_sys(&self) -> f32 {
+    pub fn get_bp_sys(&self) -> u8 {
         self.sys
     }
-    pub fn get_bp_dia(&self) -> f32 {
+    pub fn get_bp_dia(&self) -> u8 {
         self.dia
     }
-    pub fn get_bp_pul(&self) -> f32 {
+    pub fn get_bp_pul(&self) -> u8 {
         self.pul
     }
     pub fn get_date(&self) -> &str {
@@ -71,7 +71,7 @@ impl Measurement {
     }
     pub fn get_csv_entry(&self) -> String {
         format!(
-            "{},{},{:.1},{:.1},{:.1}",
+            "{},{},{},{},{}",
             self.date, self.time, self.sys, self.dia, self.pul
         )
     }
@@ -172,7 +172,7 @@ fn worker_csv_status(csv_entries: &Vec<Measurement>) {
     }
 }
 
-fn worker_bp_add(bp: &Vec<f32>) {
+fn worker_bp_add(bp: &Vec<u8>) {
     let sys = bp[0];
     let dia = bp[1];
     let pul = bp[2];
