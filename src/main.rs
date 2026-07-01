@@ -63,13 +63,13 @@ impl Measurement {
     pub fn get_bp_pul(&self) -> f32 {
         self.pul
     }
-    pub fn get_date(&self) -> &str {
+    pub fn get_date_str(&self) -> &str {
         &self.date[..]
     }
-    pub fn get_time(&self) -> &str {
+    pub fn get_time_str(&self) -> &str {
         &self.time[..]
     }
-    pub fn get_csv_entry(&self) -> String {
+    pub fn get_csv_entry_string(&self) -> String {
         format!(
             "{},{},{:.1},{:.1},{:.1}",
             self.date, self.time, self.sys, self.dia, self.pul
@@ -135,7 +135,7 @@ fn worker_csv_rebuild(csv_entries: &Vec<Measurement>) {
     // println!("Sorted entries:");
     // for entry in &csv_entries {
     for (index, entry) in (csv_entries).iter().enumerate() {
-        let csv_line = entry.get_csv_entry();
+        let csv_line = entry.get_csv_entry_string();
         // println!("[{}] {:?}", index, csv_line);
 
         writeln!(&fh_csv, "{}", csv_line).expect(&format!(
@@ -182,7 +182,7 @@ fn worker_bp_add(bp: &Vec<f32>) {
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteAppend);
 
     // Append entry to CSV file
-    if let Err(e) = writeln!(&fh_csv, "{}", measurement.get_csv_entry()) {
+    if let Err(e) = writeln!(&fh_csv, "{}", measurement.get_csv_entry_string()) {
         eprintln!("Couldn't write to file: {}", e);
     }
 
