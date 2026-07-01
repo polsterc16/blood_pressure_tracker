@@ -17,9 +17,9 @@ struct Cli {
     #[arg(short, long, num_args = 3, value_names=["sys","dia","pul"])]
     add: Option<Vec<f32>>,
 
-    /// Generate Output (Default number of intervals = 2)
-    #[arg(short, long, value_name = "num_interval", default_missing_value = "2", num_args = 0..=1, value_parser = clap::value_parser!(u8).range(2..=12))]
-    output: Option<u8>,
+    /// Generate Output
+    #[arg(short, long)]
+    output: bool,
 
     /// Display status of CSV file
     #[arg(short, long)]
@@ -101,17 +101,14 @@ fn main() {
         _ => (),
     }
 
-    if cli.rebuild || cli.status || cli.output.is_some() {
+    if cli.rebuild || cli.status || cli.output {
         let csv_entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
 
         if cli.rebuild {
             worker_csv_rebuild(&csv_entries);
         }
-        match cli.output {
-            Some(num_interval) => {
-                worker_pdf_output(&csv_entries, num_interval);
-            }
-            _ => (),
+        if cli.output {
+            worker_output(&csv_entries);
         }
         if cli.status {
             worker_csv_status(&csv_entries);
@@ -122,8 +119,8 @@ fn main() {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_pdf_output(csv_entries: &Vec<Measurement>, num_interval: u8) {
-    let interval: f32 = 24.0f32 / (num_interval as f32);
+fn worker_output(csv_entries: &Vec<Measurement>) {
+    let interval: f32 = 12.0;
 
     let e_first = &csv_entries[0];
     let e_last = &csv_entries[csv_entries.len() - 1];
