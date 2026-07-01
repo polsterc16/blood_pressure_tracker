@@ -1,5 +1,11 @@
 #![allow(unused)]
+use chrono::DateTime;
+use chrono::Datelike;
 use chrono::Local;
+use chrono::NaiveDateTime;
+use chrono::TimeDelta;
+use chrono::Timelike;
+use chrono::Utc;
 use clap::{Args, Parser};
 use serde::Deserialize;
 // use std::env;
@@ -74,6 +80,13 @@ impl Measurement {
             "{},{},{:.1},{:.1},{:.1}",
             self.date, self.time, self.sys, self.dia, self.pul
         )
+    }
+    pub fn get_datetime(&self) -> DateTime<Utc> {
+        let dt_string = format!("{} {}", self.date, self.time);
+        let dt = NaiveDateTime::parse_from_str(&dt_string, "%Y-%m-%d %H:%M:%S")
+            .expect(&format!("Unable to read time '{dt_string}'!"))
+            .and_utc();
+        dt
     }
 }
 
