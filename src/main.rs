@@ -39,7 +39,7 @@ struct Cli {
 
 // ################################################################
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct Measurement {
     date: String,
     time: String,
@@ -57,6 +57,7 @@ impl fmt::Display for Measurement {
     }
 }
 impl Measurement {
+    /// Generates new 'Measurement' object for the given BP values at the current time
     pub fn new(sys: f32, dia: f32, pul: f32) -> Measurement {
         return Measurement {
             date: get_date(),
@@ -66,22 +67,27 @@ impl Measurement {
             pul,
         };
     }
-
+    /// Returns the BP as tuple (`sys`, `dia`, `pul`)
     pub fn get_bp(&self) -> (f32, f32, f32) {
         (self.sys, self.dia, self.pul)
     }
+    /// Returns the BP field `sys`
     pub fn get_bp_sys(&self) -> f32 {
         self.sys
     }
+    /// Returns the BP field `dia`
     pub fn get_bp_dia(&self) -> f32 {
         self.dia
     }
+    /// Returns the BP field `pul`
     pub fn get_bp_pul(&self) -> f32 {
         self.pul
     }
+    /// Returns the `date` field
     pub fn get_date_str(&self) -> &str {
         &self.date[..]
     }
+    /// Returns the `time` field
     pub fn get_time_str(&self) -> &str {
         &self.time[..]
     }
@@ -99,7 +105,62 @@ impl Measurement {
             .and_utc();
         dt
     }
+    /// Create 'Meas2' object from this
+    pub fn to_m2(&self) -> Meas2 {
+        Meas2::new(&self)
+    }
 }
+
+#[derive(Debug)]
+struct Meas2 {
+    meas: Measurement,
+    datetime: DateTime<Utc>,
+    td_f32: f32,
+}
+impl Meas2 {
+    pub fn new(meas: &Measurement) -> Meas2 {
+        Meas2 {
+            meas: meas.clone(),
+            datetime: meas.get_datetime(),
+            td_f32: 0f32,
+        }
+    }
+    /// Set `td`
+    pub fn set_td(&mut self, dt_f32: f32) {
+        self.td_f32 = dt_f32;
+    }
+    /// Calculate and set `td`
+    pub fn calc_td(&mut self, datetime: &DateTime<Utc>) {
+        let td: TimeDelta = self.datetime - datetime;
+        self.set_td(td.as_seconds_f32() / (86400.0f32)); // seconds to days
+    }
+    /// Returns the field `td`
+    pub fn get_td(&self) -> f32 {
+        self.td_f32
+    }
+    /// Returns the field `datetime`
+    pub fn get_datetime(&self) -> &DateTime<Utc> {
+        &self.datetime
+    }
+    /// Returns the BP as tuple (`sys`, `dia`, `pul`)
+    pub fn get_bp(&self) -> (f32, f32, f32) {
+        self.meas.get_bp()
+    }
+    /// Returns the BP field `sys`
+    pub fn get_bp_sys(&self) -> f32 {
+        self.meas.get_bp_sys()
+    }
+    /// Returns the BP field `dia`
+    pub fn get_bp_dia(&self) -> f32 {
+        self.meas.get_bp_dia()
+    }
+    /// Returns the BP field `pul`
+    pub fn get_bp_pul(&self) -> f32 {
+        self.meas.get_bp_pul()
+    }
+}
+
+// ################################################################
 
 #[derive(Debug, PartialEq)]
 enum CsvOpenMode {
