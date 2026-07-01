@@ -8,6 +8,7 @@ use chrono::Timelike;
 use chrono::Utc;
 use clap::{Args, Parser};
 use serde::Deserialize;
+use std::fmt;
 // use std::env;
 // use std::error::Error;
 use std::fs;
@@ -46,6 +47,15 @@ struct Measurement {
     dia: f32,
     pul: f32,
 }
+impl fmt::Display for Measurement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{},{},{:.1},{:.1},{:.1}",
+            self.date, self.time, self.sys, self.dia, self.pul
+        )
+    }
+}
 impl Measurement {
     pub fn new(sys: f32, dia: f32, pul: f32) -> Measurement {
         return Measurement {
@@ -75,12 +85,13 @@ impl Measurement {
     pub fn get_time_str(&self) -> &str {
         &self.time[..]
     }
-    pub fn get_csv_entry_string(&self) -> String {
-        format!(
-            "{},{},{:.1},{:.1},{:.1}",
-            self.date, self.time, self.sys, self.dia, self.pul
-        )
-    }
+    /// Returns the `String` representation of the 'Measurement' object
+    // pub fn get_csv_entry_string(&self) -> String {
+    //     format!(
+    //         "{},{},{:.1},{:.1},{:.1}",
+    //         self.date, self.time, self.sys, self.dia, self.pul
+    //     )
+    // }
     pub fn get_datetime(&self) -> DateTime<Utc> {
         let dt_string = format!("{} {}", self.date, self.time);
         let dt = NaiveDateTime::parse_from_str(&dt_string, "%Y-%m-%d %H:%M:%S")
@@ -148,11 +159,11 @@ fn worker_csv_rebuild(csv_entries: &Vec<Measurement>) {
     // println!("Sorted entries:");
     // for entry in &csv_entries {
     for (index, entry) in (csv_entries).iter().enumerate() {
-        let csv_line = entry.get_csv_entry_string();
+        // let csv_line = entry.get_csv_entry_string();
         // println!("[{}] {:?}", index, csv_line);
 
-        writeln!(&fh_csv, "{}", csv_line).expect(&format!(
-            "Could not write to File '{path_string}': Entry [{index}] '{csv_line}'."
+        writeln!(&fh_csv, "{}", entry).expect(&format!(
+            "Could not write to File '{path_string}': Entry [{index}] '{entry}'."
         ));
     }
 
@@ -195,7 +206,7 @@ fn worker_bp_add(bp: &Vec<f32>) {
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteAppend);
 
     // Append entry to CSV file
-    if let Err(e) = writeln!(&fh_csv, "{}", measurement.get_csv_entry_string()) {
+    if let Err(e) = writeln!(&fh_csv, "{}", measurement) {
         eprintln!("Couldn't write to file: {}", e);
     }
 
