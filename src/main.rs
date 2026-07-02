@@ -125,8 +125,8 @@ impl MeasCsv {
         dt - t_delta
     }
     /// Create 'Meas2' object from this
-    pub fn to_m2(&'_ self) -> Meas2<'_> {
-        Meas2::new(&self)
+    pub fn to_m2(&'_ self, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'_> {
+        Meas2::new(&self, day_zero, interval)
     }
 }
 
@@ -135,99 +135,41 @@ impl MeasCsv {
 struct Meas2<'a> {
     meas1: &'a MeasCsv,
     datetime: DateTime<Utc>,
-    day_fine: Option<f32>,
-    day_coarse: Option<f32>,
+    day_fine: f32,
+    day_coarse: f32,
 }
 impl<'a> Meas2<'a> {
-    pub fn new(meas1: &'a MeasCsv) -> Meas2<'a> {
+    pub fn new(meas1: &'a MeasCsv, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'a> {
+        let datetime = meas1.get_datetime();
+
+        let td: TimeDelta = datetime - day_zero;
+        let day_fine = td.num_seconds() as f32 / SECS_IN_DAYS_F32;
+
+        let day_coarse = (day_fine * interval as f32).floor() / interval as f32;
+
         Meas2 {
             meas1,
-            datetime: meas1.get_datetime(),
-            day_fine: None,
-            day_coarse: None,
+            datetime: datetime,
+            day_fine: day_fine,
+            day_coarse: day_coarse,
         }
     }
-    /// Set `day_float` with arg as either
-    /// - `f32`
-    /// - `Option<f32>`
-    pub fn set_day_fine<T: ArgF32OrOptionTrait>(&mut self, day_fine: T) {
-        match day_fine.to_f32_or_option() {
-            ArgF32OrOption::F32(day_fine) => {
-                self.day_fine = Some(day_fine);
-            }
-            ArgF32OrOption::Option(day_fine_option) => {
-                self.day_fine = day_fine_option;
-            }
-        }
+    /// Set field `day_float`
+    pub fn set_day_fine(&mut self, day_fine: f32) {
+        self.day_fine = day_fine;
     }
-    /// Calculate and set `day_fine` from given arg `dt_zero`.
-    pub fn calc_day_fine(&mut self, dt_zero: DateTime<Utc>) {
-        let td: TimeDelta = self.datetime - dt_zero;
-
-        let d_fine: f32 = td.num_seconds() as f32 / SECS_IN_DAYS_F32;
-        self.set_day_fine(d_fine);
-    }
-    /// Get `day_fine`
-    pub fn get_day_fine(&self) -> Option<f32> {
+    /// Get field `day_fine`
+    pub fn get_day_fine(&self) -> f32 {
         self.day_fine
     }
-    /// Try to get `day_fine` as `f32`.
-    /// # Panic
-    /// Panics if `day_fine` is `None`.
-    pub fn get_day_fine_try(&self) -> f32 {
-        match self.day_fine {
-            Some(d_float) => return d_float,
-            None => panic!("Cannot return `day_fine` as `f32` (field `day_fine` is `None`)!"),
-        }
+    /// Set field `day_coarse`
+    pub fn set_day_coarse(&mut self, day_coarse: f32) {
+        self.day_coarse = day_coarse;
     }
-    /// Set `day_coarse` with arg as either
-    /// - `f32`
-    /// - `Option<f32>`
-    pub fn set_day_coarse<T: ArgF32OrOptionTrait>(&mut self, day_coarse: T) {
-        match day_coarse.to_f32_or_option() {
-            ArgF32OrOption::F32(day_coarse) => {
-                self.day_coarse = Some(day_coarse);
-            }
-            ArgF32OrOption::Option(day_coarse_option) => {
-                self.day_coarse = day_coarse_option;
-            }
-        }
-    }
-    /// Get `day_coarse`
-    pub fn get_day_coarse(&self) -> Option<f32> {
+    /// Get field `day_coarse`
+    pub fn get_day_coarse(&self) -> f32 {
         self.day_coarse
     }
-    /// Try to get `day_coarse` as `f32`.
-    /// # Panic
-    /// Panics if `day_coarse` is `None`.
-    pub fn get_day_coarse_try(&self) -> f32 {
-        match self.day_coarse {
-            Some(d_coarse) => return d_coarse,
-            None => panic!("Cannot return `day_coarse` as `f32` (field `day_coarse` is `None`)!"),
-        }
-    }
-    /// Try to calculate `day_coarse` from `day_fine` for given arg `interval` (must be greater than 0).
-    /// # Panic
-    /// Panics if
-    /// - `interval` is `0`
-    /// - `day_fine` is `None`
-    pub fn calc_day_coarse_try(&mut self, interval: u8) {
-        match self.day_fine {
-            Some(d_fine) => {
-                if interval == 0 {
-                    panic!("Argument `interval` must be greater than 0!")
-                }
-                let d_coarse = (d_fine * interval as f32).floor() / interval as f32;
-                self.set_day_coarse(d_coarse);
-            }
-            None => panic!("Cannot calculate `day_coarse` (field `day_fine` is `None`)!"),
-        }
-    }
-    // /// Calculate TimeDelta and set `day_float`
-    // pub fn calc_td(&mut self, datetime: &DateTime<Utc>) {
-    //     let td: TimeDelta = self.datetime - datetime;
-    //     self.set_day_float(td.as_seconds_f32() / (86400.0f32)); // seconds to days
-    // }
     /// Returns the field `datetime`
     pub fn get_datetime(&self) -> &DateTime<Utc> {
         &self.datetime
