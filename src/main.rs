@@ -102,12 +102,27 @@ impl MeasCsv {
     pub fn get_time_str(&self) -> &str {
         &self.time[..]
     }
+    /// Get `DateTime<Utc>` from `String` fields `date`, `time`
     pub fn get_datetime(&self) -> DateTime<Utc> {
         let dt_string = format!("{} {}", self.date, self.time);
         let dt = NaiveDateTime::parse_from_str(&dt_string, "%Y-%m-%d %H:%M:%S")
             .expect(&format!("Unable to read time '{dt_string}'!"))
             .and_utc();
         dt
+    }
+    /// Get `get_day_zero` from `datetime`
+    pub fn get_day_zero(&self) -> DateTime<Utc> {
+        // Get DateTime of first entry
+        let dt: DateTime<Utc> = self.get_datetime();
+        // get TimeDelta
+        let t_delta: TimeDelta = TimeDelta::seconds(
+            (dt.second()
+                + dt.minute() * SECS_IN_MINS_U32
+                + dt.hour() * SECS_IN_HOURS_U32
+                + dt.day() * SECS_IN_DAYS_U32) as i64,
+        );
+        // return day_zero
+        dt - t_delta
     }
     /// Create 'Meas2' object from this
     pub fn to_m2(&'_ self) -> Meas2<'_> {
