@@ -115,29 +115,92 @@ impl Measurement {
 struct Meas2 {
     meas: Measurement,
     datetime: DateTime<Utc>,
-    td_f32: f32,
+    day_fine: Option<f32>,
+    day_coarse: Option<f32>,
 }
 impl Meas2 {
     pub fn new(meas: &Measurement) -> Meas2 {
         Meas2 {
             meas: meas.clone(),
             datetime: meas.get_datetime(),
-            td_f32: 0f32,
+            day_fine: None,
+            day_coarse: None,
         }
     }
-    /// Set `td`
-    pub fn set_td(&mut self, dt_f32: f32) {
-        self.td_f32 = dt_f32;
+    /// Set `day_float` with arg as either
+    /// - `f32`
+    /// - `Option<f32>`
+    pub fn set_day_fine<T: ArgF32OrOptionTrait>(&mut self, day_fine: T) {
+        match day_fine.to_f32_or_option() {
+            ArgF32OrOption::F32(day_fine) => {
+                self.day_fine = Some(day_fine);
+            }
+            ArgF32OrOption::Option(day_fine_option) => {
+                self.day_fine = day_fine_option;
+            }
+        }
     }
-    /// Calculate and set `td`
-    pub fn calc_td(&mut self, datetime: &DateTime<Utc>) {
-        let td: TimeDelta = self.datetime - datetime;
-        self.set_td(td.as_seconds_f32() / (86400.0f32)); // seconds to days
+    /// Get `day_fine`
+    pub fn get_day_fine(&self) -> Option<f32> {
+        self.day_fine
     }
-    /// Returns the field `td`
-    pub fn get_td(&self) -> f32 {
-        self.td_f32
+    /// Try to get `day_fine` as `f32`.
+    /// # Panic
+    /// Panics if `day_fine` is `None`.
+    pub fn get_day_fine_try(&self) -> f32 {
+        match self.day_fine {
+            Some(d_float) => return d_float,
+            None => panic!("Cannot return `day_fine` as `f32` (field `day_fine` is `None`)!"),
+        }
     }
+    /// Set `day_coarse` with arg as either
+    /// - `f32`
+    /// - `Option<f32>`
+    pub fn set_day_coarse<T: ArgF32OrOptionTrait>(&mut self, day_coarse: T) {
+        match day_coarse.to_f32_or_option() {
+            ArgF32OrOption::F32(day_coarse) => {
+                self.day_coarse = Some(day_coarse);
+            }
+            ArgF32OrOption::Option(day_coarse_option) => {
+                self.day_coarse = day_coarse_option;
+            }
+        }
+    }
+    /// Get `day_coarse`
+    pub fn get_day_coarse(&self) -> Option<f32> {
+        self.day_coarse
+    }
+    /// Try to get `day_coarse` as `f32`.
+    /// # Panic
+    /// Panics if `day_coarse` is `None`.
+    pub fn get_day_coarse_try(&self) -> f32 {
+        match self.day_coarse {
+            Some(d_coarse) => return d_coarse,
+            None => panic!("Cannot return `day_coarse` as `f32` (field `day_coarse` is `None`)!"),
+        }
+    }
+    /// Try to calculate `day_coarse` from `day_fine` for given arg `interval` (must be greater than 0).
+    /// # Panic
+    /// Panics if
+    /// - `interval` is `0`
+    /// - `day_fine` is `None`
+    pub fn calc_day_coarse_try(&mut self, interval: u8) {
+        match self.day_fine {
+            Some(d_fine) => {
+                if interval == 0 {
+                    panic!("Argument `interval` must be greater than 0!")
+                }
+                let d_coarse = (d_fine * interval as f32).floor() / interval as f32;
+                self.set_day_coarse(d_coarse);
+            }
+            None => panic!("Cannot calculate `day_coarse` (field `day_fine` is `None`)!"),
+        }
+    }
+    // /// Calculate TimeDelta and set `day_float`
+    // pub fn calc_td(&mut self, datetime: &DateTime<Utc>) {
+    //     let td: TimeDelta = self.datetime - datetime;
+    //     self.set_day_float(td.as_seconds_f32() / (86400.0f32)); // seconds to days
+    // }
     /// Returns the field `datetime`
     pub fn get_datetime(&self) -> &DateTime<Utc> {
         &self.datetime
@@ -167,6 +230,28 @@ enum CsvOpenMode {
     Read,
     WriteReset,
     WriteAppend,
+}
+
+/// Helper Enum for overloading a method for
+/// - arg as `f32`
+/// - arg as `Option<f32>`
+#[derive(Debug)]
+enum ArgF32OrOption {
+    F32(f32),
+    Option(Option<f32>),
+}
+trait ArgF32OrOptionTrait {
+    fn to_f32_or_option(&self) -> ArgF32OrOption;
+}
+impl ArgF32OrOptionTrait for f32 {
+    fn to_f32_or_option(&self) -> ArgF32OrOption {
+        ArgF32OrOption::F32(*self)
+    }
+}
+impl ArgF32OrOptionTrait for Option<f32> {
+    fn to_f32_or_option(&self) -> ArgF32OrOption {
+        ArgF32OrOption::Option(*self)
+    }
 }
 
 // ################################################################
