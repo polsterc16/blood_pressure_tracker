@@ -265,7 +265,7 @@ impl<'a> CollectionMeas2<'a> {
 
         // populate 'vec_meas2'
         for m_csv in v_ref {
-            let mut m2 = m_csv.to_m2(day_zero, 2);
+            let m2 = m_csv.to_m2(day_zero, 2);
             coll.vec_meas2.push(m2);
         }
 
@@ -280,28 +280,6 @@ enum CsvOpenMode {
     Read,
     WriteReset,
     WriteAppend,
-}
-
-/// Helper Enum for overloading a method for
-/// - arg as `f32`
-/// - arg as `Option<f32>`
-#[derive(Debug)]
-enum ArgF32OrOption {
-    F32(f32),
-    Option(Option<f32>),
-}
-trait ArgF32OrOptionTrait {
-    fn to_f32_or_option(&self) -> ArgF32OrOption;
-}
-impl ArgF32OrOptionTrait for f32 {
-    fn to_f32_or_option(&self) -> ArgF32OrOption {
-        ArgF32OrOption::F32(*self)
-    }
-}
-impl ArgF32OrOptionTrait for Option<f32> {
-    fn to_f32_or_option(&self) -> ArgF32OrOption {
-        ArgF32OrOption::Option(*self)
-    }
 }
 
 // ################################################################
