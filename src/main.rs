@@ -148,6 +148,13 @@ impl<'a> Meas2<'a> {
             }
         }
     }
+    /// Calculate and set `day_fine` from given arg `day_zero`.
+    pub fn calc_day_fine(&mut self, dt_zero: DateTime<Utc>) {
+        let td: TimeDelta = self.datetime - dt_zero;
+
+        let d_fine: f32 = td.num_seconds() as f32 / SECS_IN_DAYS;
+        self.set_day_fine(d_fine);
+    }
     /// Get `day_fine`
     pub fn get_day_fine(&self) -> Option<f32> {
         self.day_fine
