@@ -46,15 +46,16 @@ struct Cli {
 
 // ################################################################
 
+/// Struct for importing entries from CSV file
 #[derive(Debug, Deserialize, Clone)]
-struct Measurement {
+struct MeasCsv {
     date: String,
     time: String,
     sys: f32,
     dia: f32,
     pul: f32,
 }
-impl fmt::Display for Measurement {
+impl fmt::Display for MeasCsv {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -63,10 +64,10 @@ impl fmt::Display for Measurement {
         )
     }
 }
-impl Measurement {
-    /// Generates new 'Measurement' object for the given BP values at the current time
-    pub fn new(sys: f32, dia: f32, pul: f32) -> Measurement {
-        return Measurement {
+impl MeasCsv {
+    /// Generates new 'MeasCsv' object for the given BP values at the current time
+    pub fn new(sys: f32, dia: f32, pul: f32) -> MeasCsv {
+        return MeasCsv {
             date: get_date(),
             time: get_time(),
             sys,
@@ -98,13 +99,6 @@ impl Measurement {
     pub fn get_time_str(&self) -> &str {
         &self.time[..]
     }
-    /// Returns the `String` representation of the 'Measurement' object
-    // pub fn get_csv_entry_string(&self) -> String {
-    //     format!(
-    //         "{},{},{:.1},{:.1},{:.1}",
-    //         self.date, self.time, self.sys, self.dia, self.pul
-    //     )
-    // }
     pub fn get_datetime(&self) -> DateTime<Utc> {
         let dt_string = format!("{} {}", self.date, self.time);
         let dt = NaiveDateTime::parse_from_str(&dt_string, "%Y-%m-%d %H:%M:%S")
@@ -118,16 +112,16 @@ impl Measurement {
     }
 }
 
-/// Measurement-2 exists only as long as the ref Measurement-1
+/// Measurement-2 exists only as long as the ref MeasCsv
 #[derive(Debug)]
 struct Meas2<'a> {
-    meas1: &'a Measurement,
+    meas1: &'a MeasCsv,
     datetime: DateTime<Utc>,
     day_fine: Option<f32>,
     day_coarse: Option<f32>,
 }
 impl<'a> Meas2<'a> {
-    pub fn new(meas1: &'a Measurement) -> Meas2<'a> {
+    pub fn new(meas1: &'a MeasCsv) -> Meas2<'a> {
         Meas2 {
             meas1,
             datetime: meas1.get_datetime(),
@@ -148,7 +142,7 @@ impl<'a> Meas2<'a> {
             }
         }
     }
-    /// Calculate and set `day_fine` from given arg `day_zero`.
+    /// Calculate and set `day_fine` from given arg `dt_zero`.
     pub fn calc_day_fine(&mut self, dt_zero: DateTime<Utc>) {
         let td: TimeDelta = self.datetime - dt_zero;
 
@@ -240,11 +234,11 @@ impl<'a> Meas2<'a> {
 
 #[derive(Debug)]
 struct CollectionMeas1 {
-    vec_meas1: Vec<Measurement>,
+    vec_meas1: Vec<MeasCsv>,
 }
 impl CollectionMeas1 {
     /// Add (and consume) a `Measurement` object to vector field.
-    pub fn add_meas_consume(&self, m: Measurement) {}
+    pub fn add_meas_consume(&self, m: MeasCsv) {}
 
     /// Sort collection vector by fields `date`, `time`
     pub fn sort(&mut self) {
@@ -325,7 +319,7 @@ fn main() {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_output(csv_entries: &Vec<Measurement>) {
+fn worker_output(csv_entries: &Vec<MeasCsv>) {
     let interval: f32 = 12.0;
 
     let e_first = &csv_entries[0];
@@ -333,7 +327,7 @@ fn worker_output(csv_entries: &Vec<Measurement>) {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_entries: &Vec<Measurement>) {
+fn worker_csv_rebuild(csv_entries: &Vec<MeasCsv>) {
     let path_string = get_file_path_string();
     // Open CSV File and reset content
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
@@ -355,7 +349,7 @@ fn worker_csv_rebuild(csv_entries: &Vec<Measurement>) {
         .expect(&format!("Unable to save File '{path_string}'."));
 }
 
-fn worker_csv_status(csv_entries: &Vec<Measurement>) {
+fn worker_csv_status(csv_entries: &Vec<MeasCsv>) {
     let date_ym = get_date_ym();
 
     let csv_len = csv_entries.len();
@@ -380,7 +374,7 @@ fn worker_bp_add(bp: &Vec<f32>) {
     let dia = bp[1];
     let pul = bp[2];
 
-    let measurement = Measurement::new(sys, dia, pul);
+    let measurement = MeasCsv::new(sys, dia, pul);
 
     let path_string = get_file_path_string();
 
@@ -457,7 +451,7 @@ fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
     fh_csv
 }
 
-fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
+fn read_csv_content() -> Result<Vec<MeasCsv>, Box<dyn std::error::Error>> {
     let path_string = get_file_path_string();
 
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::Read);
@@ -467,11 +461,11 @@ fn read_csv_content() -> Result<Vec<Measurement>, Box<dyn std::error::Error>> {
 
     // let records_iter = rdr.deserialize();
 
-    let records: Vec<Result<Measurement, csv::Error>> = rdr.deserialize().collect();
-    let mut ret: Vec<Measurement> = Vec::with_capacity(records.len());
+    let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
+    let mut ret: Vec<MeasCsv> = Vec::with_capacity(records.len());
 
     for result in records {
-        let entry: Measurement = result?;
+        let entry: MeasCsv = result?;
         // println!("{:?}", entry);
         ret.push(entry);
     }
