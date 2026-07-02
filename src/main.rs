@@ -20,7 +20,10 @@ use std::path::Path;
 // ################################################################
 
 const CSV_HEADER: &str = "date,time,sys,dia,pul";
-const SECS_IN_DAYS: f32 = 86400_f32;
+const SECS_IN_DAYS_F32: f32 = 86400_f32;
+const SECS_IN_DAYS_U32: u32 = 86400_u32;
+const SECS_IN_HOURS_U32: u32 = 3600_u32;
+const SECS_IN_MINS_U32: u32 = 60_u32;
 
 // ################################################################
 
@@ -146,7 +149,7 @@ impl<'a> Meas2<'a> {
     pub fn calc_day_fine(&mut self, dt_zero: DateTime<Utc>) {
         let td: TimeDelta = self.datetime - dt_zero;
 
-        let d_fine: f32 = td.num_seconds() as f32 / SECS_IN_DAYS;
+        let d_fine: f32 = td.num_seconds() as f32 / SECS_IN_DAYS_F32;
         self.set_day_fine(d_fine);
     }
     /// Get `day_fine`
