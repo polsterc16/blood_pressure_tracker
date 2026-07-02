@@ -239,9 +239,9 @@ struct CollectionMeas1 {
 impl CollectionMeas1 {
     pub fn new() -> CollectionMeas1 {
         CollectionMeas1 {
-                    vec_meas1: Vec::new(),
-                }
-            }
+            vec_meas1: Vec::new(),
+        }
+    }
     pub fn new_with_capacity(capacity: usize) -> CollectionMeas1 {
         CollectionMeas1 {
             vec_meas1: Vec::with_capacity(capacity),
@@ -336,16 +336,16 @@ fn main() {
     }
 
     if cli.rebuild || cli.status || cli.output {
-        let csv_entries = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
+        let csv_collection = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
 
         if cli.rebuild {
-            worker_csv_rebuild(&csv_entries);
+            worker_csv_rebuild(&csv_collection);
         }
         if cli.output {
-            worker_output(&csv_entries);
+            worker_output(&csv_collection);
         }
         if cli.status {
-            worker_csv_status(&csv_entries);
+            worker_csv_status(&csv_collection);
         }
     }
 
@@ -353,7 +353,8 @@ fn main() {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_output(csv_entries: &Vec<MeasCsv>) {
+fn worker_output(csv_collection: &CollectionMeas1) {
+    let csv_entries = csv_collection.get_ref();
     let interval: f32 = 12.0;
 
     let e_first = &csv_entries[0];
@@ -361,14 +362,14 @@ fn worker_output(csv_entries: &Vec<MeasCsv>) {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_entries: &Vec<MeasCsv>) {
+fn worker_csv_rebuild(csv_collection: &CollectionMeas1) {
     let path_string = get_file_path_string();
     // Open CSV File and reset content
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
 
     // println!("Sorted entries:");
     // for entry in &csv_entries {
-    for (index, entry) in (csv_entries).iter().enumerate() {
+    for (index, entry) in csv_collection.get_ref().iter().enumerate() {
         // let csv_line = entry.get_csv_entry_string();
         // println!("[{}] {:?}", index, csv_line);
 
@@ -383,7 +384,8 @@ fn worker_csv_rebuild(csv_entries: &Vec<MeasCsv>) {
         .expect(&format!("Unable to save File '{path_string}'."));
 }
 
-fn worker_csv_status(csv_entries: &Vec<MeasCsv>) {
+fn worker_csv_status(csv_collection: &CollectionMeas1) {
+    let csv_entries = csv_collection.get_ref();
     let date_ym = get_date_ym();
 
     let csv_len = csv_entries.len();
@@ -485,7 +487,7 @@ fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
     fh_csv
 }
 
-fn read_csv_content() -> Result<Vec<MeasCsv>, Box<dyn std::error::Error>> {
+fn read_csv_content() -> Result<CollectionMeas1, Box<dyn std::error::Error>> {
     let path_string = get_file_path_string();
 
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::Read);
@@ -496,18 +498,21 @@ fn read_csv_content() -> Result<Vec<MeasCsv>, Box<dyn std::error::Error>> {
     // let records_iter = rdr.deserialize();
 
     let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
-    let mut ret: Vec<MeasCsv> = Vec::with_capacity(records.len());
+    // let mut ret: Vec<MeasCsv> = Vec::with_capacity(records.len());
+    let mut coll = CollectionMeas1::new_with_capacity(records.len());
 
     for result in records {
         let entry: MeasCsv = result?;
         // println!("{:?}", entry);
-        ret.push(entry);
+        // ret.push(entry);
+        coll.add_meas1_consume(entry);
     }
 
-    // Sort vector of Measurement by date, time
-    ret.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
+    // // Sort vector of Measurement by date, time
+    // ret.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
+    coll.sort();
 
-    Ok(ret)
+    Ok(coll)
 }
 
 fn check_file(path_file_str: &str) -> Result<(), std::io::Error> {
