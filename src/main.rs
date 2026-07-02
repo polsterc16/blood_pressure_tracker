@@ -113,23 +113,24 @@ impl Measurement {
         dt
     }
     /// Create 'Meas2' object from this
-    pub fn to_m2(&self) -> Meas2 {
+    pub fn to_m2(&'_ self) -> Meas2<'_> {
         Meas2::new(&self)
     }
 }
 
+/// Measurement-2 exists only as long as the ref Measurement-1
 #[derive(Debug)]
-struct Meas2 {
-    meas: Measurement,
+struct Meas2<'a> {
+    meas1: &'a Measurement,
     datetime: DateTime<Utc>,
     day_fine: Option<f32>,
     day_coarse: Option<f32>,
 }
-impl Meas2 {
-    pub fn new(meas: &Measurement) -> Meas2 {
+impl<'a> Meas2<'a> {
+    pub fn new(meas1: &'a Measurement) -> Meas2<'a> {
         Meas2 {
-            meas: meas.clone(),
-            datetime: meas.get_datetime(),
+            meas1,
+            datetime: meas1.get_datetime(),
             day_fine: None,
             day_coarse: None,
         }
@@ -214,20 +215,45 @@ impl Meas2 {
     }
     /// Returns the BP as tuple (`sys`, `dia`, `pul`)
     pub fn get_bp(&self) -> (f32, f32, f32) {
-        self.meas.get_bp()
+        self.meas1.get_bp()
     }
     /// Returns the BP field `sys`
     pub fn get_bp_sys(&self) -> f32 {
-        self.meas.get_bp_sys()
+        self.meas1.get_bp_sys()
     }
     /// Returns the BP field `dia`
     pub fn get_bp_dia(&self) -> f32 {
-        self.meas.get_bp_dia()
+        self.meas1.get_bp_dia()
     }
     /// Returns the BP field `pul`
     pub fn get_bp_pul(&self) -> f32 {
-        self.meas.get_bp_pul()
+        self.meas1.get_bp_pul()
     }
+}
+
+#[derive(Debug)]
+struct CollectionMeas1 {
+    vec_meas1: Vec<Measurement>,
+}
+impl CollectionMeas1 {
+    /// Add (and consume) a `Measurement` object to vector field.
+    pub fn add_meas_consume(&self, m: Measurement) {}
+
+    /// Sort collection vector by fields `date`, `time`
+    pub fn sort(&mut self) {
+        self.vec_meas1
+            .sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
+    }
+}
+
+#[derive(Debug)]
+struct CollectionMeas2<'a> {
+    coll_meas1: &'a CollectionMeas1,
+    vec_meas2: Vec<Meas2<'a>>,
+    day_zero: Option<DateTime<Utc>>,
+}
+impl<'a> CollectionMeas2<'a> {
+    pub fn add_meas_ref(m: Meas2) {}
 }
 
 // ################################################################
