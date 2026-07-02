@@ -17,6 +17,13 @@ use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
+// ################################################################
+
+const CSV_HEADER: &str = "date,time,sys,dia,pul";
+const SECS_IN_DAYS: f32 = 86400_f32;
+
+// ################################################################
+
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
@@ -253,10 +260,6 @@ impl ArgF32OrOptionTrait for Option<f32> {
         ArgF32OrOption::Option(*self)
     }
 }
-
-// ################################################################
-
-const CSV_HEADER: &str = "date,time,sys,dia,pul";
 
 // ################################################################
 // ################################################################
