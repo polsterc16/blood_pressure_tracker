@@ -245,10 +245,32 @@ impl CollectionMeas1 {
 struct CollectionMeas2<'a> {
     coll_meas1: &'a CollectionMeas1,
     vec_meas2: Vec<Meas2<'a>>,
-    day_zero: Option<DateTime<Utc>>,
+    day_zero: DateTime<Utc>,
 }
 impl<'a> CollectionMeas2<'a> {
-    pub fn add_meas_ref(m: Meas2) {}
+    pub fn new(coll_meas1: &'a CollectionMeas1) -> CollectionMeas2<'a> {
+        let v_ref = coll_meas1.get_ref();
+        let v_size = v_ref.len();
+        if v_size == 0 {
+            panic!("'coll_meas1' is empty!")
+        }
+
+        let day_zero = (&v_ref[0]).get_day_zero();
+
+        let mut coll: CollectionMeas2<'a> = CollectionMeas2 {
+            coll_meas1,
+            vec_meas2: Vec::with_capacity(v_size),
+            day_zero,
+        };
+
+        // populate 'vec_meas2'
+        for m_csv in v_ref {
+            let mut m2 = m_csv.to_m2(day_zero, 2);
+            coll.vec_meas2.push(m2);
+        }
+
+        return coll;
+    }
 }
 
 // ################################################################
@@ -314,11 +336,12 @@ fn main() {
 
 /// Will read the CSV file, sort measurements and overwrite the file
 fn worker_output(csv_collection: &CollectionMeas1) {
-    let csv_entries = csv_collection.get_ref();
-    let interval: f32 = 12.0;
+    let coll_m2 = CollectionMeas2::new(csv_collection);
 
-    let e_first = &csv_entries[0];
-    let e_last = &csv_entries[csv_entries.len() - 1];
+    let v_m2 = &coll_m2.vec_meas2;
+    for idx in 0..20 {
+        println!("[{idx}]\t{:?}", v_m2[idx]);
+    }
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
