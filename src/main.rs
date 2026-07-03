@@ -262,6 +262,10 @@ impl<'a> CollectionMeas2<'a> {
     pub fn get_ref(&'a self) -> &'a Vec<Meas2<'a>> {
         &self.vec_meas2
     }
+    /// Sort collection vector by field `datetime`
+    pub fn sort(&mut self) {
+        self.vec_meas2.sort_by_key(|k| k.datetime);
+    }
 }
 
 // ################################################################
