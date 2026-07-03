@@ -229,6 +229,10 @@ impl CollectionMeas1 {
         self.vec_meas1
             .sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
     }
+    /// Create 'Meas2 collection' object from this
+    pub fn to_coll_m2(&'_ self, interval: u8) -> CollectionMeas2<'_> {
+        CollectionMeas2::new(&self, interval)
+    }
 }
 
 #[derive(Debug)]
@@ -318,7 +322,7 @@ fn main() {
 
 /// Will read the CSV file, sort measurements and overwrite the file
 fn worker_output(csv_collection: &CollectionMeas1) {
-    let coll_m2 = CollectionMeas2::new(csv_collection);
+    let coll_m2 = csv_collection.to_coll_m2(2);
 
     let v_m2 = &coll_m2.vec_meas2;
     for idx in 0..20 {
