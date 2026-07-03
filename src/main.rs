@@ -21,9 +21,6 @@ use std::path::Path;
 
 const CSV_HEADER: &str = "date,time,sys,dia,pul";
 const SECS_IN_DAYS_F32: f32 = 86400_f32;
-const SECS_IN_DAYS_U32: u32 = 86400_u32;
-const SECS_IN_HOURS_U32: u32 = 3600_u32;
-const SECS_IN_MINS_U32: u32 = 60_u32;
 
 // ################################################################
 
