@@ -129,16 +129,16 @@ impl MeasCsv {
 /// Measurement-2 exists only as long as the ref MeasCsv
 #[derive(Debug)]
 struct Meas2<'a> {
-    meas1: &'a MeasCsv,
+    meas_csv: &'a MeasCsv,
     datetime: DateTime<Utc>,
     day_fine: f32,
     day_coarse: f32,
 }
 impl<'a> Meas2<'a> {
-    pub fn new(meas1: &'a MeasCsv, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'a> {
+    pub fn new(meas_csv: &'a MeasCsv, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'a> {
         let mut m2 = Meas2 {
-            meas1,
-            datetime: meas1.get_datetime(),
+            meas_csv,
+            datetime: meas_csv.get_datetime(),
             day_fine: 0_f32,
             day_coarse: 0_f32,
         };
@@ -181,19 +181,19 @@ impl<'a> Meas2<'a> {
     }
     /// Returns the BP as tuple (`sys`, `dia`, `pul`)
     pub fn get_bp(&self) -> BpType {
-        self.meas1.get_bp()
+        self.meas_csv.get_bp()
     }
     /// Returns the BP field `sys`
     pub fn get_bp_sys(&self) -> f32 {
-        self.meas1.get_bp_sys()
+        self.meas_csv.get_bp_sys()
     }
     /// Returns the BP field `dia`
     pub fn get_bp_dia(&self) -> f32 {
-        self.meas1.get_bp_dia()
+        self.meas_csv.get_bp_dia()
     }
     /// Returns the BP field `pul`
     pub fn get_bp_pul(&self) -> f32 {
-        self.meas1.get_bp_pul()
+        self.meas_csv.get_bp_pul()
     }
 }
 
