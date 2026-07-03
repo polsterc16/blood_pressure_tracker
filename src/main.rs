@@ -20,6 +20,8 @@ const SECS_IN_DAYS_F32: f32 = 86400_f32;
 
 // ################################################################
 
+/// Tuple describing a blood pressure measurement,
+/// containing (`dia`, `sys`, `pul`).
 type BpType = (f32, f32, f32);
 
 // ################################################################
@@ -66,14 +68,14 @@ impl fmt::Display for MeasCsv {
 }
 impl MeasCsv {
     /// Generates new 'MeasCsv' object for the given BP values at the current time
-    pub fn new(sys: f32, dia: f32, pul: f32) -> MeasCsv {
-        return MeasCsv {
+    pub fn new(sys: f32, dia: f32, pul: f32) -> Self {
+        Self {
             date: get_date(),
             time: get_time(),
             sys,
             dia,
             pul,
-        };
+        }
     }
     /// Returns the BP as tuple (`sys`, `dia`, `pul`)
     pub fn get_bp(&self) -> BpType {
@@ -206,13 +208,13 @@ struct CollectionMeas1 {
     vec_meas1: Vec<MeasCsv>,
 }
 impl CollectionMeas1 {
-    pub fn new() -> CollectionMeas1 {
-        CollectionMeas1 {
+    pub fn new() -> Self {
+        Self {
             vec_meas1: Vec::new(),
         }
     }
-    pub fn new_with_capacity(capacity: usize) -> CollectionMeas1 {
-        CollectionMeas1 {
+    pub fn new_with_capacity(capacity: usize) -> Self {
+        Self {
             vec_meas1: Vec::with_capacity(capacity),
         }
     }
@@ -291,8 +293,8 @@ struct CollectionDayCoarse {
     vec_bp: Vec<BpType>,
 }
 impl CollectionDayCoarse {
-    pub fn new_from_m2(m2: &Meas2) -> CollectionDayCoarse {
-        let mut coll = CollectionDayCoarse {
+    pub fn new_from_m2(m2: &Meas2) -> Self {
+        let mut coll = Self {
             day: 0_f32,
             sec: 0,
             vec_bp: Vec::new(),
