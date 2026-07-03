@@ -238,7 +238,7 @@ struct CollectionMeas2<'a> {
     day_zero: DateTime<Utc>,
 }
 impl<'a> CollectionMeas2<'a> {
-    pub fn new(coll_meas1: &'a CollectionMeas1) -> CollectionMeas2<'a> {
+    pub fn new(coll_meas1: &'a CollectionMeas1, interval: u8) -> CollectionMeas2<'a> {
         let v_ref = coll_meas1.get_ref();
         let v_size = v_ref.len();
         if v_size == 0 {
@@ -257,7 +257,7 @@ impl<'a> CollectionMeas2<'a> {
 
         // Populate 'vec_meas2' of 'CollectionMeas2' object
         for m_csv in v_ref {
-            let m2 = m_csv.to_m2(day_zero, 2);
+            let m2 = m_csv.to_m2(day_zero, interval);
             coll.add_meas2_consume(m2);
         }
 
