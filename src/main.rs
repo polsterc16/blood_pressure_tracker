@@ -264,10 +264,18 @@ impl<'a> CollectionMeas2<'a> {
         // Populate 'vec_meas2' of 'CollectionMeas2' object
         for m_csv in v_ref {
             let m2 = m_csv.to_m2(day_zero, 2);
-            coll.vec_meas2.push(m2);
+            coll.add_meas2_consume(m2);
         }
 
         return coll;
+    }
+    /// Add (and consume) a `Meas2` object to vector field.
+    fn add_meas2_consume(&mut self, meas_2: Meas2<'a>) {
+        self.vec_meas2.push(meas_2);
+    }
+    /// Get ref to vector field.
+    pub fn get_ref(&'a self) -> &'a Vec<Meas2<'a>> {
+        &self.vec_meas2
     }
 }
 
