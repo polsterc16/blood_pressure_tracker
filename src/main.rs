@@ -405,10 +405,14 @@ fn main() {
 fn worker_output(csv_collection: &CollectionMeas1) {
     let coll_m2 = csv_collection.to_coll_m2(2);
 
-    let v_m2 = &coll_m2.vec_meas2;
-    for idx in 0..20 {
-        println!("[{idx}]\t{:?}", v_m2[idx]);
+    let vec_m2 = coll_m2.get_ref();
+    let mut cm = CollectionMonth::new();
+
+    for meas2 in vec_m2 {
+        // println!("[{idx}]\t{:?}", v_m2[idx]);
+        cm.add_meas2(&meas2);
     }
+    println!("{:?}", cm.get_ref());
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
