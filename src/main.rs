@@ -136,23 +136,25 @@ struct Meas2<'a> {
 }
 impl<'a> Meas2<'a> {
     pub fn new(meas1: &'a MeasCsv, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'a> {
-        let datetime = meas1.get_datetime();
-
-        let td: TimeDelta = datetime - day_zero;
-        let day_fine = td.num_seconds() as f32 / SECS_IN_DAYS_F32;
-
-        let day_coarse = (day_fine * interval as f32).floor() / interval as f32;
-
-        Meas2 {
+        let mut m2 = Meas2 {
             meas1,
-            datetime: datetime,
-            day_fine: day_fine,
-            day_coarse: day_coarse,
-        }
+            datetime: meas1.get_datetime(),
+            day_fine: 0_f32,
+            day_coarse: 0_f32,
+        };
+        m2.calc_day_fine(day_zero);
+        m2.calc_day_coarse(interval);
+
+        m2
     }
-    /// Set field `day_float`
+    /// Set field `day_fine`
     pub fn set_day_fine(&mut self, day_fine: f32) {
         self.day_fine = day_fine;
+    }
+    /// Calc (and set) field `day_fine`
+    pub fn calc_day_fine(&mut self, day_zero: DateTime<Utc>) {
+        let td: TimeDelta = *self.get_datetime() - day_zero;
+        self.set_day_fine(td.num_seconds() as f32 / SECS_IN_DAYS_F32);
     }
     /// Get field `day_fine`
     pub fn get_day_fine(&self) -> f32 {
@@ -161,6 +163,13 @@ impl<'a> Meas2<'a> {
     /// Set field `day_coarse`
     pub fn set_day_coarse(&mut self, day_coarse: f32) {
         self.day_coarse = day_coarse;
+    }
+    /// Calc (and set) field `day_coarse`
+    pub fn calc_day_coarse(&mut self, interval: u8) {
+        let mut day_coarse = (self.get_day_fine() * interval as f32).floor() / interval as f32;
+        day_coarse += 24_f32 / (2 * interval) as f32;
+
+        self.set_day_coarse(day_coarse);
     }
     /// Get field `day_coarse`
     pub fn get_day_coarse(&self) -> f32 {
