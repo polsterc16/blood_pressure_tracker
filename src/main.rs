@@ -207,21 +207,6 @@ impl CollectionMeas1 {
     pub fn add_meas1_consume(&mut self, meas_csv: MeasCsv) {
         self.vec_meas1.push(meas_csv);
     }
-    // /// Attempt to increase capacity of field `vec_meas1`
-    // /// # Panic
-    // /// Panics if `try_reserve` returns `TryReserveError`.
-    // pub fn set_capacity_try(&mut self, size_new: usize) {
-    //     // println!("len = {}", self.vec_meas1.capacity()); // DEBUG
-    //     if self.vec_meas1.capacity() < size_new {
-    //         match self
-    //             .vec_meas1
-    //             .try_reserve(size_new - self.vec_meas1.capacity())
-    //         {
-    //             Ok(_) => (),
-    //             Err(e) => panic!("Unable to reserve capacity for field `vec_meas1`: {e}"),
-    //         }
-    //     }
-    // }
     /// Clear vector field.
     pub fn clear(&mut self) {
         self.vec_meas1.clear();
