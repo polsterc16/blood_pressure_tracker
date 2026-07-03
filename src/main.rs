@@ -110,19 +110,18 @@ impl MeasCsv {
             .and_utc();
         dt
     }
-    /// Get `get_day_zero` from `datetime`
+    /// Get `get_day_zero`, the day before the first day of the month
     pub fn get_day_zero(&self) -> DateTime<Utc> {
-        // Get DateTime of first entry
-        let dt: DateTime<Utc> = self.get_datetime();
-        // get TimeDelta
-        let t_delta: TimeDelta = TimeDelta::seconds(
-            (dt.second()
-                + dt.minute() * SECS_IN_MINS_U32
-                + dt.hour() * SECS_IN_HOURS_U32
-                + dt.day() * SECS_IN_DAYS_U32) as i64,
-        );
-        // return day_zero
-        dt - t_delta
+        // Create String for first day of current month
+        let day_1_s = format!("{}-01 00:00:00", &self.date[..7]);
+
+        // Get `DateTime` for first day of current month
+        let day_1 = NaiveDateTime::parse_from_str(&day_1_s, "%F %T")
+            .expect(&format!("Unable to read date '{}'!", day_1_s))
+            .and_utc();
+
+        // return `day_zero`
+        day_1 - TimeDelta::days(1)
     }
     /// Create 'Meas2' object from this
     pub fn to_m2(&'_ self, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'_> {
