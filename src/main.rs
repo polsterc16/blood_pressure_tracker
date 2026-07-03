@@ -251,15 +251,17 @@ impl<'a> CollectionMeas2<'a> {
             panic!("'coll_meas1' is empty!")
         }
 
+        // Determine `day_zero` from first entry in 'CollectionMeas1'
         let day_zero = (&v_ref[0]).get_day_zero();
 
+        // Create 'CollectionMeas2' object
         let mut coll: CollectionMeas2<'a> = CollectionMeas2 {
             coll_meas1,
             vec_meas2: Vec::with_capacity(v_size),
             day_zero,
         };
 
-        // populate 'vec_meas2'
+        // Populate 'vec_meas2' of 'CollectionMeas2' object
         for m_csv in v_ref {
             let m2 = m_csv.to_m2(day_zero, 2);
             coll.vec_meas2.push(m2);
