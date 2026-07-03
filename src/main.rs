@@ -20,6 +20,10 @@ const SECS_IN_DAYS_F32: f32 = 86400_f32;
 
 // ################################################################
 
+type BpType = (f32, f32, f32);
+
+// ################################################################
+
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
@@ -72,7 +76,7 @@ impl MeasCsv {
         };
     }
     /// Returns the BP as tuple (`sys`, `dia`, `pul`)
-    pub fn get_bp(&self) -> (f32, f32, f32) {
+    pub fn get_bp(&self) -> BpType {
         (self.sys, self.dia, self.pul)
     }
     /// Returns the BP field `sys`
@@ -167,7 +171,7 @@ impl<'a> Meas2<'a> {
         &self.datetime
     }
     /// Returns the BP as tuple (`sys`, `dia`, `pul`)
-    pub fn get_bp(&self) -> (f32, f32, f32) {
+    pub fn get_bp(&self) -> BpType {
         self.meas1.get_bp()
     }
     /// Returns the BP field `sys`
