@@ -6,6 +6,7 @@ use chrono::TimeDelta;
 use chrono::Utc;
 use clap::Parser;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::fs::File;
@@ -23,6 +24,8 @@ const SECS_IN_DAYS_F32: f32 = 86400_f32;
 /// Tuple describing a blood pressure measurement,
 /// containing (`dia`, `sys`, `pul`).
 type BpType = (f32, f32, f32);
+/// `HashMap` that groups `Vec`s of `BpType` by `sec: i64`.
+type BpGrpHashType = HashMap<i64, Vec<BpType>>;
 
 // ################################################################
 
@@ -322,6 +325,40 @@ impl CollectionDayCoarse {
     pub fn set_time(&mut self, m2: &Meas2) {
         self.day = m2.get_day_coarse();
         self.sec = m2.get_sec_coarse();
+    }
+}
+
+#[derive(Debug)]
+struct CollectionMonth {
+    /// `HashMap` that groups BP measurements (`BpType`) as `Vec`
+    /// by their `sec: i64` (`sec_coarse`) value.
+    /// - k -> `sec: i64`
+    /// - v -> `Vec<BpType>`
+    bp_grp: BpGrpHashType,
+}
+impl CollectionMonth {
+    pub fn new() -> Self {
+        Self {
+            bp_grp: HashMap::new(),
+        }
+    }
+    /// Add contents of a `Meas2` object to internal `BpGrpHashType`.
+    pub fn add_meas2(&mut self, m2: &Meas2) {
+        let k = m2.get_sec_coarse();
+        let v = m2.get_bp();
+
+        // check if key k is already in hashmap - create new entry if not
+        if !self.bp_grp.contains_key(&k) {
+            self.bp_grp.insert(k, Vec::new());
+        }
+        let mut vec_bp = self.bp_grp.get_mut(&k).unwrap();
+        vec_bp.push(v);
+    }
+    pub fn clear(&mut self) {
+        self.bp_grp.clear();
+    }
+    pub fn get_ref(&self) -> &BpGrpHashType {
+        &self.bp_grp
     }
 }
 
