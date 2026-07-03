@@ -285,6 +285,44 @@ impl<'a> CollectionMeas2<'a> {
     }
 }
 
+struct CollectionDayCoarse {
+    day: f32,
+    sec: i64,
+    vec_bp: Vec<BpType>,
+}
+impl CollectionDayCoarse {
+    pub fn new_from_m2(m2: &Meas2) -> CollectionDayCoarse {
+        let mut coll = CollectionDayCoarse {
+            day: 0_f32,
+            sec: 0,
+            vec_bp: Vec::new(),
+        };
+        coll.set_time(m2);
+        coll.add_meas2(m2);
+        coll
+    }
+    /// Clears `BpType` vector
+    pub fn clear(&mut self) {
+        self.vec_bp.clear();
+    }
+    /// Add `BpType` tuple to vector
+    pub fn add_meas2(&mut self, m2: &Meas2) {
+        if self.sec != m2.get_sec_coarse() {
+            panic!(
+                "Mismatch of `sec_coarse` of Collection and Meas2 ({}, {})!",
+                self.sec,
+                m2.get_sec_coarse()
+            )
+        }
+        self.vec_bp.push(m2.get_bp());
+    }
+    /// Set field `day` and `sec`
+    pub fn set_time(&mut self, m2: &Meas2) {
+        self.day = m2.get_day_coarse();
+        self.sec = m2.get_sec_coarse();
+    }
+}
+
 // ################################################################
 
 #[derive(Debug, PartialEq)]
