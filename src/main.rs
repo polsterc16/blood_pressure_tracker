@@ -240,7 +240,7 @@ impl CollectionMeas1 {
     }
     /// Create 'Meas2 collection' object from this
     pub fn to_coll_m2(&'_ self, interval: u8) -> CollectionMeas2<'_> {
-        CollectionMeas2::new(&self, interval)
+        CollectionMeas2::from_coll_m1(&self, interval)
     }
 }
 
@@ -251,7 +251,7 @@ struct CollectionMeas2<'a> {
     day_zero: DateTime<Utc>,
 }
 impl<'a> CollectionMeas2<'a> {
-    pub fn new(coll_meas1: &'a CollectionMeas1, interval: u8) -> CollectionMeas2<'a> {
+    pub fn from_coll_m1(coll_meas1: &'a CollectionMeas1, interval: u8) -> CollectionMeas2<'a> {
         let v_ref = coll_meas1.get_ref();
         let v_size = v_ref.len();
         if v_size == 0 {
