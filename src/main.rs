@@ -404,6 +404,12 @@ impl CollectionMonth {
             None => None,
         }
     }
+    /// Get all keys (`i64`) from internal `HashMap` (`coll_day_map`), sorted as `Vec<i64>`.
+    pub fn get_key_sorted(&self) -> Vec<i64> {
+        let mut vec_keys: Vec<i64> = self.coll_day_map.keys().map(|x| x.clone()).collect();
+        vec_keys.sort();
+        vec_keys
+    }
 }
 
 // ################################################################
