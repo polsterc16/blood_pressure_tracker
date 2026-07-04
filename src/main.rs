@@ -462,7 +462,16 @@ fn worker_output(csv_collection: &CollectionMeas1) {
         // println!("[{idx}]\t{:?}", v_m2[idx]);
         cm.add_meas2(&meas2);
     }
-    println!("{:?}", cm.get_ref());
+    // println!("{:?}", cm.get_ref());
+    let hm = cm.get_ref();
+    let keys = cm.get_key_sorted();
+    println!("keys: {:?}", keys);
+
+    for k in keys {
+        if let Some(cd) = hm.get(&k) {
+            println!("[{k}, {}]\t{:?}", cd.get_entry_len(), cd.get_ref());
+        }
+    }
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
