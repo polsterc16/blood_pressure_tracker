@@ -567,8 +567,8 @@ struct AnalyzeResult {
     quartile: [f32; 5],
     outliers: Vec<f32>,
     iqr: f32,
-    min: f32,
-    max: f32,
+    whisker_upper: f32,
+    whisker_lower: f32,
 }
 impl AnalyzeResult {
     fn new() -> Self {
@@ -576,8 +576,8 @@ impl AnalyzeResult {
             quartile: [0_f32; 5],
             outliers: Vec::new(),
             iqr: 0_f32,
-            min: 0_f32,
-            max: 0_f32,
+            whisker_upper: 0_f32,
+            whisker_lower: 0_f32,
         }
     }
     fn get_median(&self) -> f32 {
@@ -587,10 +587,10 @@ impl AnalyzeResult {
         self.iqr
     }
     fn get_min(&self) -> f32 {
-        self.min
+        self.quartile[0]
     }
     fn get_max(&self) -> f32 {
-        self.max
+        self.quartile[4]
     }
     fn get_q0(&self) -> f32 {
         self.quartile[0]
@@ -606,6 +606,12 @@ impl AnalyzeResult {
     }
     fn get_q4(&self) -> f32 {
         self.quartile[4]
+    }
+    fn get_whisker_upper(&self) -> f32 {
+        self.whisker_upper
+    }
+    fn get_whisker_lower(&self) -> f32 {
+        self.whisker_lower
     }
     fn get_outlier(&self) -> &Vec<f32> {
         &self.outliers
