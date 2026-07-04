@@ -354,11 +354,21 @@ impl CollectionMonth {
         let mut vec_bp = self.bp_grp.get_mut(&k).unwrap();
         vec_bp.push(v);
     }
+    /// Clears internal `HashMap` (`bp_grp`)
     pub fn clear(&mut self) {
         self.bp_grp.clear();
     }
+    /// Returns ref to internal `HashMap` (`bp_grp`)
     pub fn get_ref(&self) -> &BpGrpHashType {
         &self.bp_grp
+    }
+    /// Returns `len()` of the value (`Vec<BpType>`) corresponding to the key (`i64`).\
+    /// `Option`: Returns `Some(usize)`, if key in map, `None` otherwise.
+    pub fn get_entry_len(&self, k: i64) -> Option<usize> {
+        match self.bp_grp.get(&k) {
+            Some(v) => Some(v.len()),
+            None => None,
+        }
     }
 }
 
