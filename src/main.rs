@@ -412,6 +412,209 @@ impl CollectionMonth {
     }
 }
 
+#[derive(Debug)]
+struct AnalyzeDay<'a> {
+    ref_vec_bp: &'a Vec<BpType>,
+    a_result: [AnalyzeResult; 3],
+}
+impl<'a> AnalyzeDay<'a> {
+    pub fn new(vec_bp: &'a Vec<BpType>) -> Self {
+        AnalyzeDay {
+            ref_vec_bp: vec_bp,
+            a_result: [
+                AnalyzeResult::new(),
+                AnalyzeResult::new(),
+                AnalyzeResult::new(),
+            ],
+        }
+    }
+    pub fn analyze(&mut self) {
+        // Create array of sample `Vec`s
+        let mut a_measurement: [Vec<f32>; 3] = self.create_samples();
+
+        // Get min/max
+        self.calc_min_max(&a_measurement);
+
+        // Calc Quartiles & IQR
+        self.calc_quartile(&a_measurement);
+    }
+    fn create_samples(&mut self) -> [Vec<f32>; 3] {
+        let len = self.ref_vec_bp.len();
+        let mut a_measurement: [Vec<f32>; 3] = [
+            Vec::<f32>::with_capacity(len),
+            Vec::<f32>::with_capacity(len),
+            Vec::<f32>::with_capacity(len),
+        ];
+        // Insert all samples into their respective `Vec`
+        for bp_line in self.ref_vec_bp {
+            a_measurement[0].push(bp_line.0);
+            a_measurement[1].push(bp_line.1);
+            a_measurement[2].push(bp_line.2);
+        }
+        // Sort all sample `Vec`s
+        for mut vec_x in &mut a_measurement {
+            vec_x.sort_by(f32::total_cmp);
+        }
+        return a_measurement;
+    }
+    fn calc_min_max(&mut self, a_measurement: &[Vec<f32>; 3]) {
+        for idx_m in 0..a_measurement.len() {
+            let vec_x = &a_measurement[idx_m];
+            let res = &mut self.a_result[idx_m];
+            res.min = vec_x.first().unwrap().clone();
+            res.max = vec_x.last().unwrap().clone();
+        }
+    }
+    fn calc_quartile(&mut self, a_measurement: &[Vec<f32>; 3]) {
+        // Dekking, Michel (2005). A modern introduction to probability and statistics: understanding why and how.
+        // London: Springer. pp. 236-238. ISBN 978-1-85233-896-1. OCLC 262680588.
+        // https://archive.org/details/modernintroducti0000unse_h6a1
+        let len: usize = self.ref_vec_bp.len();
+
+        // Array of quartile percentages p
+        let a_p: [f32; _] = [0.0, 0.25, 0.5, 0.75, 1.0];
+        // Array of indexes of `a_p` to consider for calculation (Q1,Q2,Q3)
+        let a_idx_p: [usize; _] = [1, 2, 3];
+
+        // Go through Q1,Q2,Q3 (25%,50%,75%)
+        'Loop_Q123: for idx_p in a_idx_p {
+            let p = a_p[idx_p];
+            let temp = p * len as f32;
+            let _k = temp.floor();
+
+            let k = _k as usize;
+            let a = temp - _k;
+
+            // For sys,dia,pul: Calc respective Q1,Q2,Q3
+            'Loop_SysDiaPul_1: for idx_m in 0..a_measurement.len() {
+                let vec_x = &a_measurement[idx_m];
+                let res = &mut self.a_result[idx_m];
+                res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
+            }
+        }
+
+        // For sys,dia,pul: Calc IQR,Q0,Q4
+        'Loop_SysDiaPul_2: for idx_m in 0..a_measurement.len() {
+            let vec_x = &a_measurement[idx_m];
+            let res = &mut self.a_result[idx_m];
+            // Calc IQR (interquartile range)
+            res.iqr = res.quartile[3] - res.quartile[1];
+
+            // Calc upper/lower whisker limits
+            let lim_u = res.quartile[3] + 1.5 * res.iqr;
+            let lim_l = res.quartile[1] - 1.5 * res.iqr;
+
+            // Check for outliers outside whiskers
+            'check_upper: {
+                if lim_u >= res.max {
+                    // There are no outliers above Median and Q4 matches `max`.
+                    res.quartile[4] = res.max;
+                } else {
+                    // There must be some outliers above Median!
+                    // Go through all samples `x` in sample `Vec` `vec_x` in descending order:
+                    // - If `x > lim_u`, then add it to outlier `Vec`
+                    // - Else: The upper Whisker border Q4 is found!
+                    'Loop_sample_desc: for idx_desc in (0..len).rev() {
+                        let x = vec_x[idx_desc];
+                        if x > lim_u {
+                            // Add to outliers
+                            res.outliers.push(x);
+                        } else {
+                            // Whisker border found: Set Q4
+                            res.quartile[4] = x;
+                            break; // And stop searching
+                        }
+                    }
+                }
+            }
+            'check_lower: {
+                if lim_l <= res.min {
+                    // There are no outliers below Median and Q0 matches `min`
+                    res.quartile[0] = res.min;
+                } else {
+                    // There must be some outliers below Median!
+                    // Go through all samples `x` in sample `Vec` `vec_x` in ascending order:
+                    // - If `x < lim_l`, then add it to outlier `Vec`
+                    // - Else: The lower Whisker border Q0 is found!
+                    'Loop_sample_asc: for idx_asc in 0..len {
+                        let x = vec_x[idx_asc];
+                        if x < lim_l {
+                            // Add to outliers
+                            res.outliers.push(x);
+                        } else {
+                            // Whisker border found: Set Q0
+                            res.quartile[0] = x;
+                            break; // And stop searching
+                        }
+                    }
+                }
+            }
+        }
+    }
+    pub fn get_sys(&self) -> &AnalyzeResult {
+        &self.a_result[0]
+    }
+    pub fn get_dia(&self) -> &AnalyzeResult {
+        &self.a_result[1]
+    }
+    pub fn get_pul(&self) -> &AnalyzeResult {
+        &self.a_result[2]
+    }
+}
+
+#[derive(Debug)]
+struct AnalyzeResult {
+    quartile: [f32; 5],
+    outliers: Vec<f32>,
+    iqr: f32,
+    min: f32,
+    max: f32,
+}
+impl AnalyzeResult {
+    fn new() -> Self {
+        Self {
+            quartile: [0_f32; 5],
+            outliers: Vec::new(),
+            iqr: 0_f32,
+            min: 0_f32,
+            max: 0_f32,
+        }
+    }
+    fn get_median(&self) -> f32 {
+        self.quartile[2]
+    }
+    fn get_iqr(&self) -> f32 {
+        self.iqr
+    }
+    fn get_min(&self) -> f32 {
+        self.min
+    }
+    fn get_max(&self) -> f32 {
+        self.max
+    }
+    fn get_q0(&self) -> f32 {
+        self.quartile[0]
+    }
+    fn get_q1(&self) -> f32 {
+        self.quartile[1]
+    }
+    fn get_q2(&self) -> f32 {
+        self.quartile[2]
+    }
+    fn get_q3(&self) -> f32 {
+        self.quartile[3]
+    }
+    fn get_q4(&self) -> f32 {
+        self.quartile[4]
+    }
+    fn get_outlier(&self) -> &Vec<f32> {
+        &self.outliers
+    }
+    fn has_outlier(&self) -> bool {
+        self.outliers.len() > 0
+    }
+}
+
 // ################################################################
 
 #[derive(Debug, PartialEq)]
