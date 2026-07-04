@@ -462,10 +462,36 @@ impl AnalyzeDayBuilder {
             res.quartile[4] = vec_x.last().unwrap().clone();
         }
     }
+    /// Calculates the quartiles Q1,Q2,Q3 and checks for outliers.
+    ///
+    /// `q(p) = x[k] + a(x[k+1] - x[k])`
+    ///
+    /// With
+    /// - `k = floor( p*(N-1) )` [^1]
+    /// - `a = p*(N-1) - k` [^1]
+    ///
+    /// Where
+    /// - `N`: sample size
+    /// - `p`: quartile percentage
+    /// - `x[k]`: sample at index `k`
+    /// - `Q1...Q3`: `q(p)` for `p = [0.25, 0.5, 0.75]`
+    ///
+    /// [^1]: The Source uses `N+1` here for some unknown reason.
+    ///
+    /// # Source
+    /// Dekking, Michel (2005). *A modern introduction to probability and statistics: understanding why and how.*\
+    /// London: Springer. **pp. 236-238**. ISBN 978-1-85233-896-1. OCLC 262680588.\
+    /// https://archive.org/details/modernintroducti0000unse_h6a1
+    ///
+    /// ## The case for `N-1`
+    /// The source's examples seem to use one-based indexing `[1,N]`, but their unmodified equation \
+    /// for `k(p,N) = floor( p*(N+1) )` will result in out-of-bounds indexing:
+    /// - `k = 0` for `p < 0.01` and
+    /// - `k+1 = N+1`for `p > 0.99`.
+    ///
+    /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
+    /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
     fn calc_quartile(item: &mut AnalyzeDay, a_measurement: &[Vec<f32>; 3]) {
-        // Dekking, Michel (2005). A modern introduction to probability and statistics: understanding why and how.
-        // London: Springer. pp. 236-238. ISBN 978-1-85233-896-1. OCLC 262680588.
-        // https://archive.org/details/modernintroducti0000unse_h6a1
         let sample_size: usize = a_measurement.first().unwrap().len();
 
         // Array of quartile percentages p
@@ -499,6 +525,34 @@ impl AnalyzeDayBuilder {
             Self::check_outlier_lower(vec_x, res);
         }
     }
+    /// Calculates the parameters `k` and `a` for the calculation of the quartiles.
+    ///
+    /// - `k = floor( p*(N-1) )` [^1]
+    /// - `a = p*(N-1) - k` [^1]
+    ///
+    /// Where
+    /// - `N`: sample size
+    /// - `p`: quartile percentage
+    ///
+    /// [^1]: The Source uses `N+1` here for some unknown reason.
+    ///
+    /// # Returns
+    /// - `k: usize`
+    /// - `a: f32`
+    ///
+    /// # Source
+    /// Dekking, Michel (2005). *A modern introduction to probability and statistics: understanding why and how.*\
+    /// London: Springer. **pp. 236-238**. ISBN 978-1-85233-896-1. OCLC 262680588.\
+    /// https://archive.org/details/modernintroducti0000unse_h6a1
+    ///
+    /// ## The case for `N-1`
+    /// The source's examples seem to use one-based indexing `[1,N]`, but their unmodified equation \
+    /// for `k(p,N) = floor( p*(N+1) )` will result in out-of-bounds indexing:
+    /// - `k = 0` for `p < 0.01` and
+    /// - `k+1 = N+1`for `p > 0.99`.
+    ///
+    /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
+    /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
     fn calc_quartile_param(sample_size: usize, p: f32) -> (usize, f32) {
         let temp = p * (sample_size - 1) as f32;
         let _k = temp.floor();
