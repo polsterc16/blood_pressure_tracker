@@ -291,13 +291,13 @@ impl<'a> CollectionMeas2<'a> {
 }
 
 #[derive(Debug)]
-struct CollectionDayCoarse {
+struct CollectionDay {
     day: f32,
     sec: i64,
     vec_bp: Vec<BpType>,
 }
-impl CollectionDayCoarse {
-    /// Creates new `CollectionDayCoarse` obj from provided `Meas2` obj.\
+impl CollectionDay {
+    /// Creates new `CollectionDay` obj from provided `Meas2` obj.\
     /// Sets internal `sec: i64` and `day: f32` fields based on provided `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
     /// Adds `BpType` tuple from provided `Meas2` obj as first element to internal `Vec<BpType>` (`vec_bp`).
     pub fn new_from_m2(m2: &Meas2) -> Self {
@@ -321,7 +321,7 @@ impl CollectionDayCoarse {
     /// Add `BpType` tuple from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
     ///
     /// # Panic
-    /// Will panic, if field `sec_coarse` of `Meas2` obj does not match field `sec` of this `CollectionDayCoarse` obj.
+    /// Will panic, if field `sec_coarse` of `Meas2` obj does not match field `sec` of this `CollectionDay` obj.
     pub fn add_meas2(&mut self, m2: &Meas2) {
         if self.sec != m2.get_sec_coarse() {
             panic!(
