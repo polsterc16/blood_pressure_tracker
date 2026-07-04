@@ -290,12 +290,16 @@ impl<'a> CollectionMeas2<'a> {
     }
 }
 
+#[derive(Debug)]
 struct CollectionDayCoarse {
     day: f32,
     sec: i64,
     vec_bp: Vec<BpType>,
 }
 impl CollectionDayCoarse {
+    /// Creates new `CollectionDayCoarse` obj from provided `Meas2` obj.\
+    /// Sets internal `sec: i64` and `day: f32` fields based on provided `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
+    /// Adds `BpType` tuple from provided `Meas2` obj as first element to internal `Vec<BpType>` (`vec_bp`).
     pub fn new_from_m2(m2: &Meas2) -> Self {
         let mut coll = Self {
             day: 0_f32,
@@ -306,11 +310,18 @@ impl CollectionDayCoarse {
         coll.add_meas2(m2);
         coll
     }
-    /// Clears `BpType` vector
+    /// Clears internal `Vec<BpType>` (`vec_bp`)
     pub fn clear(&mut self) {
         self.vec_bp.clear();
     }
-    /// Add `BpType` tuple to vector
+    /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
+    pub fn get_ref(&self) -> &Vec<BpType> {
+        &self.vec_bp
+    }
+    /// Add `BpType` tuple from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
+    ///
+    /// # Panic
+    /// Will panic, if field `sec_coarse` of `Meas2` obj does not match field `sec` of this `CollectionDayCoarse` obj.
     pub fn add_meas2(&mut self, m2: &Meas2) {
         if self.sec != m2.get_sec_coarse() {
             panic!(
@@ -321,10 +332,24 @@ impl CollectionDayCoarse {
         }
         self.vec_bp.push(m2.get_bp());
     }
-    /// Set field `day` and `sec`
-    pub fn set_time(&mut self, m2: &Meas2) {
-        self.day = m2.get_day_coarse();
-        self.sec = m2.get_sec_coarse();
+    /// Sets internal `sec: i64` and `day: f32` fields based on `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
+    /// **SHALL** only be called when internal `Vec<BpType>` (`vec_bp`) is empty (see `new_from_m2`).
+    ///
+    /// # Panic
+    /// Will panic, if called when internal `Vec<BpType>` (`vec_bp`) is **NOT** empty.
+    fn set_time(&mut self, m2: &Meas2) {
+        if self.get_entry_len() == 0 {
+            self.day = m2.get_day_coarse();
+            self.sec = m2.get_sec_coarse();
+        } else {
+            panic!(
+                "Cannot change obj fields `sec`, `day` when internal `Vec<BpType>` (`vec_bp`) already contains elements!",
+            )
+        }
+    }
+    /// Returns `len()` of the internal `Vec<BpType>` (`vec_bp`).
+    pub fn get_entry_len(&self) -> usize {
+        self.vec_bp.len()
     }
 }
 
