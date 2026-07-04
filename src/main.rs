@@ -24,8 +24,8 @@ const SECS_IN_DAYS_F32: f32 = 86400_f32;
 /// Tuple describing a blood pressure measurement,
 /// containing (`dia`, `sys`, `pul`).
 type BpType = (f32, f32, f32);
-/// `HashMap` that groups `Vec`s of `BpType` by `sec: i64`.
-type BpGrpHashType = HashMap<i64, Vec<BpType>>;
+/// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
+type CollDayHashType = HashMap<i64, CollectionDay>;
 
 // ################################################################
 
@@ -355,43 +355,52 @@ impl CollectionDay {
 
 #[derive(Debug)]
 struct CollectionMonth {
-    /// `HashMap` that groups BP measurements (`BpType`) as `Vec`
-    /// by their `sec: i64` (`sec_coarse`) value.
-    /// - k -> `sec: i64`
-    /// - v -> `Vec<BpType>`
-    bp_grp: BpGrpHashType,
+    /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
+    /// - k -> `i64`
+    /// - v -> `CollectionDay`
+    coll_day_map: CollDayHashType,
 }
 impl CollectionMonth {
     pub fn new() -> Self {
         Self {
-            bp_grp: HashMap::new(),
+            coll_day_map: HashMap::new(),
         }
     }
-    /// Add contents of a `Meas2` object to internal `BpGrpHashType`.
+    /// Add contents of `Meas2` obj to internal `HashMap` (`coll_day_map`).
     pub fn add_meas2(&mut self, m2: &Meas2) {
         let k = m2.get_sec_coarse();
-        let v = m2.get_bp();
 
-        // check if key k is already in hashmap - create new entry if not
-        if !self.bp_grp.contains_key(&k) {
-            self.bp_grp.insert(k, Vec::new());
+        // Check if key `k` is already in `HashMap` (`coll_day_map`)
+        // - Add if `Some` - Create new entry & insert if `None`
+        match self.coll_day_map.get_mut(&k) {
+            Some(coll_day) => {
+                // Add measurement to `CollectionDay` obj in `HashMap`.
+                // This is handled by `CollectionDay::add_meas2`.
+                coll_day.add_meas2(m2);
+            }
+            None => {
+                // Create new `CollectionDay` obj *and* add measurement into it.
+                // (This is handled by `CollectionDay::new_from_m2` directly!!!)
+                // Then insert to `HashMap`.
+                self.coll_day_map.insert(k, CollectionDay::new_from_m2(&m2));
+            }
         }
-        let mut vec_bp = self.bp_grp.get_mut(&k).unwrap();
-        vec_bp.push(v);
     }
-    /// Clears internal `HashMap` (`bp_grp`)
+    /// Clears internal `HashMap` (`coll_day_map`)
     pub fn clear(&mut self) {
-        self.bp_grp.clear();
+        self.coll_day_map.clear();
     }
-    /// Returns ref to internal `HashMap` (`bp_grp`)
-    pub fn get_ref(&self) -> &BpGrpHashType {
-        &self.bp_grp
+    /// Returns ref to internal `HashMap` (`coll_day_map`)
+    pub fn get_ref(&self) -> &CollDayHashType {
+        &self.coll_day_map
     }
-    /// Returns `len()` of the value (`Vec<BpType>`) corresponding to the key (`i64`).\
-    /// `Option`: Returns `Some(usize)`, if key in map, `None` otherwise.
+    /// Returns 'length' of the `CollectionDay` obj corresponding to the key `k` (`i64`).\
+    /// The 'length' of the `CollectionDay` obj is `len()` of its internal `Vec<(BpType)>`.
+    ///
+    /// `Option<usize>`: Returns `Some(usize)`, if key `k` in map, `None` otherwise.
     pub fn get_entry_len(&self, k: i64) -> Option<usize> {
-        match self.bp_grp.get(&k) {
-            Some(v) => Some(v.len()),
+        match self.coll_day_map.get(&k) {
+            Some(v) => Some(v.get_entry_len()),
             None => None,
         }
     }
