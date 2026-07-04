@@ -21,9 +21,9 @@ const SECS_IN_DAYS_F32: f32 = 86400_f32;
 
 // ################################################################
 
-/// Tuple describing a blood pressure measurement,
+/// Array describing a blood pressure measurement,
 /// containing (`dia`, `sys`, `pul`).
-type BpType = (f32, f32, f32);
+type BpType = [f32; 3];
 /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
 type CollDayHashType = HashMap<i64, CollectionDay>;
 
@@ -80,9 +80,9 @@ impl MeasCsv {
             pul,
         }
     }
-    /// Returns the BP as tuple (`sys`, `dia`, `pul`)
+    /// Returns the BP as array [`sys`, `dia`, `pul`]
     pub fn get_bp(&self) -> BpType {
-        (self.sys, self.dia, self.pul)
+        [self.sys, self.dia, self.pul]
     }
     /// Returns the BP field `sys`
     pub fn get_bp_sys(&self) -> f32 {
@@ -188,7 +188,7 @@ impl<'a> Meas2<'a> {
     pub fn get_datetime(&self) -> &DateTime<Utc> {
         &self.datetime
     }
-    /// Returns the BP as tuple (`sys`, `dia`, `pul`)
+    /// Returns the BP as array [`sys`, `dia`, `pul`]
     pub fn get_bp(&self) -> BpType {
         self.meas_csv.get_bp()
     }
@@ -299,7 +299,7 @@ struct CollectionDay {
 impl CollectionDay {
     /// Creates new `CollectionDay` obj from provided `Meas2` obj.\
     /// Sets internal `sec: i64` and `day: f32` fields based on provided `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
-    /// Adds `BpType` tuple from provided `Meas2` obj as first element to internal `Vec<BpType>` (`vec_bp`).
+    /// Adds `BpType` array from provided `Meas2` obj as first element to internal `Vec<BpType>` (`vec_bp`).
     pub fn new_from_m2(m2: &Meas2) -> Self {
         let mut coll = Self {
             day: 0_f32,
@@ -318,7 +318,7 @@ impl CollectionDay {
     pub fn get_ref(&self) -> &Vec<BpType> {
         &self.vec_bp
     }
-    /// Add `BpType` tuple from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
+    /// Add `BpType` array from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
     ///
     /// # Panic
     /// Will panic, if field `sec_coarse` of `Meas2` obj does not match field `sec` of this `CollectionDay` obj.
@@ -444,9 +444,9 @@ impl AnalyzeDayBuilder {
         ];
         // Insert all samples into their respective `Vec`
         for bp_line in vec_bp {
-            a_measurement[0].push(bp_line.0);
-            a_measurement[1].push(bp_line.1);
-            a_measurement[2].push(bp_line.2);
+            a_measurement[0].push(bp_line[0]);
+            a_measurement[1].push(bp_line[1]);
+            a_measurement[2].push(bp_line[2]);
         }
         // Sort all sample `Vec`s
         for mut vec_x in &mut a_measurement {
