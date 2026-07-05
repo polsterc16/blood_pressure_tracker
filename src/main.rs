@@ -622,7 +622,7 @@ impl AnalyzeDayBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AnalyzeDay {
     // ref_vec_bp: &'a Vec<BpType>,
     a_result: [AnalyzeResult; 3],
@@ -639,7 +639,7 @@ impl AnalyzeDay {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AnalyzeResult {
     name: [u8; 32],
     quartile: [f32; 5],
