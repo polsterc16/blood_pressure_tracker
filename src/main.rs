@@ -295,34 +295,34 @@ struct CollectionDay {
     day: f32,
     sec: i64,
     vec_bp: Vec<BpType>,
+    analysis: AnalyzeDay,
 }
 impl CollectionDay {
     /// Creates new `CollectionDay` obj from provided `Meas2` obj.\
     /// Sets internal `sec: i64` and `day: f32` fields based on provided `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
     /// Adds `BpType` array from provided `Meas2` obj as first element to internal `Vec<BpType>` (`vec_bp`).
     pub fn new_from_m2(m2: &Meas2) -> Self {
-        let mut coll = Self {
+        let mut item = Self {
             day: 0_f32,
             sec: 0,
             vec_bp: Vec::new(),
+            analysis: AnalyzeDayBuilder::build_empty(),
         };
-        coll.set_time(m2);
-        coll.add_meas2(m2);
-        coll
+        item.set_time(m2);
+        item.add_meas2(m2);
+        item.perform_analysis();
+
+        item
     }
-    /// Clears internal `Vec<BpType>` (`vec_bp`)
-    pub fn clear(&mut self) {
-        self.vec_bp.clear();
-    }
-    /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
-    pub fn get_ref(&self) -> &Vec<BpType> {
-        &self.vec_bp
+    /// Perform analysis based on `vec_bp` (`Vec<BpType>`) to create `AnalyzeDay` obj
+    fn perform_analysis(&mut self) {
+        self.analysis = AnalyzeDayBuilder::build(&self.vec_bp);
     }
     /// Add `BpType` array from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
     ///
     /// # Panic
     /// Will panic, if field `sec_coarse` of `Meas2` obj does not match field `sec` of this `CollectionDay` obj.
-    pub fn add_meas2(&mut self, m2: &Meas2) {
+    fn add_meas2(&mut self, m2: &Meas2) {
         if self.sec != m2.get_sec_coarse() {
             panic!(
                 "Mismatch of `sec_coarse` of Collection and Meas2 ({}, {})!",
@@ -347,9 +347,29 @@ impl CollectionDay {
             )
         }
     }
+    /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
+    pub fn get_ref(&self) -> &Vec<BpType> {
+        &self.vec_bp
+    }
     /// Returns `len()` of the internal `Vec<BpType>` (`vec_bp`).
     pub fn get_sample_size(&self) -> usize {
         self.vec_bp.len()
+    }
+    /// Returns ref to grp struct `AnalyzeDay` obj.
+    pub fn get_analysis_grp_ref(&self) -> &AnalyzeDay {
+        &self.analysis
+    }
+    /// Returns ref to 'sys' `AnalyzeResult` obj.
+    pub fn get_analysis_sys_ref(&self) -> &AnalyzeResult {
+        &self.analysis.get_sys()
+    }
+    /// Returns ref to 'dia' `AnalyzeResult` obj.
+    pub fn get_analysis_dia_ref(&self) -> &AnalyzeResult {
+        &self.analysis.get_dia()
+    }
+    /// Returns ref to 'pul' `AnalyzeResult` obj.
+    pub fn get_analysis_pul_ref(&self) -> &AnalyzeResult {
+        &self.analysis.get_pul()
     }
 }
 
