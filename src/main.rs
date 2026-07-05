@@ -418,9 +418,9 @@ impl AnalyzeDayBuilder {
     pub fn build<'a>(vec_bp: &'a Vec<BpType>) -> AnalyzeDay {
         let mut item = AnalyzeDay {
             a_result: [
-                AnalyzeResult::new(),
-                AnalyzeResult::new(),
-                AnalyzeResult::new(),
+                AnalyzeResult::new("sys"),
+                AnalyzeResult::new("dia"),
+                AnalyzeResult::new("pul"),
             ],
         };
 
@@ -434,6 +434,15 @@ impl AnalyzeDayBuilder {
         Self::calc_quartile(&mut item, &a_measurement);
 
         return item;
+    }
+    pub fn build_empty() -> AnalyzeDay {
+        AnalyzeDay {
+            a_result: [
+                AnalyzeResult::new("sys"),
+                AnalyzeResult::new("dia"),
+                AnalyzeResult::new("pul"),
+            ],
+        }
     }
     fn create_samples<'a>(vec_bp: &'a Vec<BpType>) -> [Vec<f32>; 3] {
         let len = vec_bp.len();
@@ -632,6 +641,7 @@ impl AnalyzeDay {
 
 #[derive(Debug)]
 struct AnalyzeResult {
+    name: [u8; 32],
     quartile: [f32; 5],
     outliers: Vec<f32>,
     iqr: f32,
@@ -639,8 +649,9 @@ struct AnalyzeResult {
     whisker_lower: f32,
 }
 impl AnalyzeResult {
-    fn new() -> Self {
+    fn new(name: &str) -> Self {
         Self {
+            name: name[..32].as_bytes().try_into().unwrap(),
             quartile: [0_f32; 5],
             outliers: Vec::new(),
             iqr: 0_f32,
