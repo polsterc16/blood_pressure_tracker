@@ -310,12 +310,11 @@ impl CollectionDay {
         };
         item.set_time(m2);
         item.add_meas2(m2);
-        item.perform_analysis();
 
         item
     }
     /// Perform analysis based on `vec_bp` (`Vec<BpType>`) to create `AnalyzeDay` obj
-    fn perform_analysis(&mut self) {
+    pub fn perform_analysis(&mut self) {
         self.analysis = AnalyzeDayBuilder::build(&self.vec_bp);
     }
     /// Add `BpType` array from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
@@ -404,6 +403,13 @@ impl CollectionMonth {
                 // Then insert to `HashMap`.
                 self.coll_day_map.insert(k, CollectionDay::new_from_m2(&m2));
             }
+        }
+    }
+    /// Perform analysis on all `CollectionDay` obj in `HashMap`
+    pub fn finish(&mut self) {
+        for k in self.get_key_sorted() {
+            let mut day = self.coll_day_map.get_mut(&k).unwrap();
+            day.perform_analysis();
         }
     }
     /// Clears internal `HashMap` (`coll_day_map`)
@@ -777,6 +783,8 @@ fn worker_output(csv_collection: &CollectionMeas1) {
         // println!("[{idx}]\t{:?}", v_m2[idx]);
         cm.add_meas2(&meas2);
     }
+    cm.finish();
+
     // println!("{:?}", cm.get_ref());
     let hm = cm.get_ref();
     let keys = cm.get_key_sorted();
