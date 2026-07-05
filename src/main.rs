@@ -679,6 +679,10 @@ impl AnalyzeResult {
             whisker_lower: 0_f32,
         }
     }
+    fn get_name(&self) -> String {
+        // self.name
+        String::from_utf8(self.name.to_vec()).unwrap()
+    }
     fn get_median(&self) -> f32 {
         self.quartile[2]
     }
