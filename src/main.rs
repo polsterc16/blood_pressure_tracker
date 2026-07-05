@@ -544,7 +544,7 @@ impl AnalyzeDayBuilder {
                 let vec_x = &a_measurement[idx_m];
                 let res = &mut item.a_result[idx_m];
                 if vec_x.len() > 1 {
-                res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
+                    res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
                 } else {
                     res.quartile[idx_p] = vec_x[k];
                 }
@@ -788,11 +788,51 @@ fn worker_output(csv_collection: &CollectionMeas1) {
     // println!("{:?}", cm.get_ref());
     let hm = cm.get_ref();
     let keys = cm.get_key_sorted();
-    println!("keys: {:?}", keys);
+    println!("keys (# {}): {:?}", keys.len(), keys);
 
     for k in keys {
         if let Some(cd) = hm.get(&k) {
-            println!("[{k}, {}]\t{:?}", cd.get_sample_size(), cd.get_ref());
+            let size = cd.get_sample_size();
+            let mut r = cd.get_analysis_sys_ref();
+            let t_sys = format!(
+                "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+                r.get_name(),
+                r.get_whisker_lower(),
+                r.get_q1(),
+                r.get_q2(),
+                r.get_q3(),
+                r.get_whisker_upper(),
+                r.get_iqr(),
+                r.get_outlier().len()
+            );
+            r = cd.get_analysis_dia_ref();
+            let t_dia = format!(
+                "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+                r.get_name(),
+                r.get_whisker_lower(),
+                r.get_q1(),
+                r.get_q2(),
+                r.get_q3(),
+                r.get_whisker_upper(),
+                r.get_iqr(),
+                r.get_outlier().len()
+            );
+            r = cd.get_analysis_pul_ref();
+            let t_pul = format!(
+                "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+                r.get_name(),
+                r.get_whisker_lower(),
+                r.get_q1(),
+                r.get_q2(),
+                r.get_q3(),
+                r.get_whisker_upper(),
+                r.get_iqr(),
+                r.get_outlier().len()
+            );
+            println!("\n[{k}, {:.2}] #Samples: {}", cd.day, cd.get_sample_size());
+            println!("\t{}", t_sys);
+            println!("\t{}", t_dia);
+            println!("\t{}", t_pul);
         }
     }
 }
