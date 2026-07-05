@@ -537,7 +537,11 @@ impl AnalyzeDayBuilder {
             'Loop_SysDiaPul_1: for idx_m in 0..a_measurement.len() {
                 let vec_x = &a_measurement[idx_m];
                 let res = &mut item.a_result[idx_m];
+                if vec_x.len() > 1 {
                 res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
+                } else {
+                    res.quartile[idx_p] = vec_x[k];
+                }
             }
         }
 
