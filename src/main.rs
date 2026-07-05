@@ -661,7 +661,7 @@ impl AnalyzeDay {
 
 #[derive(Debug, Clone)]
 struct AnalyzeResult {
-    name: [u8; 32],
+    name: String,
     quartile: [f32; 5],
     outliers: Vec<f32>,
     iqr: f32,
@@ -671,7 +671,7 @@ struct AnalyzeResult {
 impl AnalyzeResult {
     fn new(name: &str) -> Self {
         Self {
-            name: name[..32].as_bytes().try_into().unwrap(),
+            name: name.to_string(),
             quartile: [0_f32; 5],
             outliers: Vec::new(),
             iqr: 0_f32,
@@ -679,9 +679,8 @@ impl AnalyzeResult {
             whisker_lower: 0_f32,
         }
     }
-    fn get_name(&self) -> String {
-        // self.name
-        String::from_utf8(self.name.to_vec()).unwrap()
+    fn get_name(&self) -> &String {
+        &self.name
     }
     fn get_median(&self) -> f32 {
         self.quartile[2]
