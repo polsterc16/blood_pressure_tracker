@@ -338,7 +338,7 @@ impl CollectionDay {
     /// # Panic
     /// Will panic, if called when internal `Vec<BpType>` (`vec_bp`) is **NOT** empty.
     fn set_time(&mut self, m2: &Meas2) {
-        if self.get_entry_len() == 0 {
+        if self.get_sample_size() == 0 {
             self.day = m2.get_day_coarse();
             self.sec = m2.get_sec_coarse();
         } else {
@@ -348,7 +348,7 @@ impl CollectionDay {
         }
     }
     /// Returns `len()` of the internal `Vec<BpType>` (`vec_bp`).
-    pub fn get_entry_len(&self) -> usize {
+    pub fn get_sample_size(&self) -> usize {
         self.vec_bp.len()
     }
 }
@@ -398,9 +398,9 @@ impl CollectionMonth {
     /// The 'length' of the `CollectionDay` obj is `len()` of its internal `Vec<(BpType)>`.
     ///
     /// `Option<usize>`: Returns `Some(usize)`, if key `k` in map, `None` otherwise.
-    pub fn get_entry_len(&self, k: i64) -> Option<usize> {
+    pub fn get_sample_size(&self, k: i64) -> Option<usize> {
         match self.coll_day_map.get(&k) {
-            Some(v) => Some(v.get_entry_len()),
+            Some(v) => Some(v.get_sample_size()),
             None => None,
         }
     }
@@ -757,7 +757,7 @@ fn worker_output(csv_collection: &CollectionMeas1) {
 
     for k in keys {
         if let Some(cd) = hm.get(&k) {
-            println!("[{k}, {}]\t{:?}", cd.get_entry_len(), cd.get_ref());
+            println!("[{k}, {}]\t{:?}", cd.get_sample_size(), cd.get_ref());
         }
     }
 }
