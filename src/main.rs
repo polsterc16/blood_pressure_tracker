@@ -5,6 +5,7 @@ use chrono::NaiveDateTime;
 use chrono::TimeDelta;
 use chrono::Utc;
 use clap::Parser;
+use pretty_simple_display::DebugPretty;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::max;
@@ -540,7 +541,7 @@ impl CollectionDay {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, DebugPretty)]
 struct CollectionMonth {
     /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
     /// - k -> `i64`
@@ -973,15 +974,15 @@ fn main() {
 fn worker_output(csv_collection: &CollectionCsv) {
     let coll_m2 = csv_collection.to_coll_m2(2);
 
-    let coll_month = CollectionMonth::from_coll_m2(coll_m2);
+    let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
 
-    println!("Attempt json export");
-    let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
-    println!("{pretty}");
-
+    println!("{coll_month:?}");
     if true {
         return;
     }
+    println!("Attempt json export");
+    let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
+    println!("{pretty}");
 
     // println!("{:?}", cm.get_ref());
     let hm = coll_month.get_ref();
