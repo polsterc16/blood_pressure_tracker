@@ -789,18 +789,11 @@ fn main() {
 fn worker_output(csv_collection: &CollectionMeas1) {
     let coll_m2 = csv_collection.to_coll_m2(2);
 
-    let vec_m2 = coll_m2.get_ref();
-    let mut cm = CollectionMonth::new();
-
-    for meas2 in vec_m2 {
-        // println!("[{idx}]\t{:?}", v_m2[idx]);
-        cm.add_meas2(&meas2);
-    }
-    cm.finish();
+    let coll_month = CollectionMonth::from_coll_m2(coll_m2);
 
     // println!("{:?}", cm.get_ref());
-    let hm = cm.get_ref();
-    let keys = cm.get_key_sorted();
+    let hm = coll_month.get_ref();
+    let keys = coll_month.get_key_sorted();
     println!("keys (# {}): {:?}", keys.len(), keys);
 
     for k in keys {
