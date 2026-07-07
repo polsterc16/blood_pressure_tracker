@@ -263,25 +263,25 @@ impl MeasCsv {
         day_1 - TimeDelta::days(1)
     }
     /// Create 'Meas2' object from this
-    pub fn to_m2(&'_ self, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'_> {
+    pub fn to_m2(&'_ self, day_zero: DateTime<Utc>, interval: u8) -> Meas2 {
         Meas2::new(&self, day_zero, interval)
     }
 }
 
 /// Measurement-2 exists only as long as the ref MeasCsv
 #[derive(Debug)]
-struct Meas2<'a> {
-    meas_csv: &'a MeasCsv,
+struct Meas2 {
+    bp: BpType,
     datetime: DateTime<Utc>,
     day_fine: f32,
     day_coarse: f32,
     sec_fine: i64,
     sec_coarse: i64,
 }
-impl<'a> Meas2<'a> {
-    pub fn new(meas_csv: &'a MeasCsv, day_zero: DateTime<Utc>, interval: u8) -> Meas2<'a> {
+impl Meas2 {
+    pub fn new<'a>(meas_csv: &'a MeasCsv, day_zero: DateTime<Utc>, interval: u8) -> Meas2 {
         let mut m2 = Meas2 {
-            meas_csv,
+            bp: meas_csv.get_bp(),
             datetime: meas_csv.get_datetime(),
             day_fine: 0_f32,
             day_coarse: 0_f32,
@@ -327,19 +327,19 @@ impl<'a> Meas2<'a> {
     }
     /// Returns the BP as array [`sys`, `dia`, `pul`]
     pub fn get_bp(&self) -> BpType {
-        self.meas_csv.get_bp()
+        self.bp
     }
     /// Returns the BP field `sys`
     pub fn get_bp_sys(&self) -> f32 {
-        self.meas_csv.get_bp_sys()
+        self.bp[0]
     }
     /// Returns the BP field `dia`
     pub fn get_bp_dia(&self) -> f32 {
-        self.meas_csv.get_bp_dia()
+        self.bp[1]
     }
     /// Returns the BP field `pul`
     pub fn get_bp_pul(&self) -> f32 {
-        self.meas_csv.get_bp_pul()
+        self.bp[2]
     }
 }
 
@@ -376,49 +376,53 @@ impl CollectionCsv {
             .sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
     }
     /// Create 'Meas2 collection' object from this
-    pub fn to_coll_m2(&'_ self, interval: u8) -> CollectionMeas2<'_> {
-        CollectionMeas2::from_coll_m1(&self, interval)
+    pub fn to_coll_m2(&self, interval: u8) -> CollectionMeas2 {
+        CollectionMeas2::from_coll_m1(self, interval)
     }
 }
 
 #[derive(Debug)]
-struct CollectionMeas2<'a> {
-    coll_csv: &'a CollectionCsv,
-    vec_meas2: Vec<Meas2<'a>>,
+struct CollectionMeas2 {
+    // coll_csv: &'a CollectionCsv,
+    vec_meas2: Vec<Meas2>,
     day_zero: DateTime<Utc>,
 }
-impl<'a> CollectionMeas2<'a> {
-    pub fn from_coll_m1(coll_csv: &'a CollectionCsv, interval: u8) -> CollectionMeas2<'a> {
-        let v_ref = coll_csv.get_ref();
-        let v_size = v_ref.len();
-        if v_size == 0 {
+impl CollectionMeas2 {
+    pub fn from_coll_m1(coll_csv: &CollectionCsv, interval: u8) -> CollectionMeas2 {
+        let v_csv = &coll_csv.vec_csv;
+        let v_len = v_csv.len();
+        if v_len == 0 {
             panic!("'coll_csv' is empty!")
         }
 
         // Determine `day_zero` from first entry in 'CollectionCsv' obj
-        let day_zero = (&v_ref[0]).get_day_zero();
+        let m_csv_1 = v_csv.first().unwrap();
+        let day_zero = m_csv_1.get_day_zero();
 
         // Create 'CollectionMeas2' object
-        let mut coll: CollectionMeas2<'a> = CollectionMeas2 {
-            coll_csv,
-            vec_meas2: Vec::with_capacity(v_size),
+        let mut ret_coll_m2 = CollectionMeas2 {
+            // coll_csv,
+            vec_meas2: Vec::with_capacity(v_len),
             day_zero,
         };
 
         // Populate 'vec_meas2' of 'CollectionMeas2' object
-        for m_csv in v_ref {
+        for m_csv in v_csv {
             let m2 = m_csv.to_m2(day_zero, interval);
-            coll.add_meas2_consume(m2);
+            ret_coll_m2.add_meas2_consume(m2);
         }
 
-        return coll;
+        return ret_coll_m2;
     }
     /// Add (and consume) a `Meas2` object to vector field.
-    fn add_meas2_consume(&mut self, meas_2: Meas2<'a>) {
+    fn add_meas2_consume(&mut self, meas_2: Meas2) {
         self.vec_meas2.push(meas_2);
     }
+    fn get_ref_mut(&mut self) -> &mut Vec<Meas2> {
+        &mut self.vec_meas2
+    }
     /// Get ref to vector field.
-    pub fn get_ref(&'a self) -> &'a Vec<Meas2<'a>> {
+    pub fn get_ref(&self) -> &Vec<Meas2> {
         &self.vec_meas2
     }
     /// Sort collection vector by field `datetime`
