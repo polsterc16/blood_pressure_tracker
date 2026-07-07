@@ -435,65 +435,71 @@ impl CollectionMeas2 {
 struct CollectionDay {
     day: f32,
     sec: i64,
-    vec_bp: Vec<BpType>,
+    bp_seq: BpSequence,
     analysis: AnalyzeDay,
+    #[serde(skip)]
+    mut_config: bool,
 }
 impl CollectionDay {
     /// Creates new `CollectionDay` obj from provided `Meas2` obj.\
     /// Sets internal `sec: i64` and `day: f32` fields based on provided `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
     /// Adds `BpType` array from provided `Meas2` obj as first element to internal `Vec<BpType>` (`vec_bp`).
-    pub fn new_from_m2(m2: &Meas2) -> Self {
-        let mut item = Self {
-            day: 0_f32,
-            sec: 0,
-            vec_bp: Vec::new(),
-            analysis: AnalyzeDayBuilder::build_empty(),
-        };
-        item.set_time(m2);
-        item.add_meas2(m2);
+    pub fn new_from_vec_m2(vec_m2: &Vec<Meas2>) -> Self {
+        let m2_first = vec_m2.first().unwrap();
 
-        item
+        // check if all sec_coarse in vector match
+        Self::check_coarse_match(vec_m2, m2_first);
+
+        let mut ret_cd = Self {
+            day: m2_first.get_day_coarse(),
+            sec: m2_first.get_sec_coarse(),
+            bp_seq: BpSequence::new(vec_m2.len()),
+            analysis: AnalyzeDayBuilder::build_empty(),
+            mut_config: true,
+        };
+
+        for m2 in vec_m2 {
+            ret_cd.add_meas2(m2);
+        }
+        ret_cd.bp_seq.validate_shrink();
+
+        ret_cd.perform_analysis();
+
+        ret_cd
+    }
+
+    fn sort_seq(&mut self) {
+        self.bp_seq.sort_seq();
     }
     /// Perform analysis based on `vec_bp` (`Vec<BpType>`) to create `AnalyzeDay` obj
     pub fn perform_analysis(&mut self) {
-        self.analysis = AnalyzeDayBuilder::build(&self.vec_bp);
+        self.sort_seq();
+        self.analysis = AnalyzeDayBuilder::build(&mut self.bp_seq);
     }
     /// Add `BpType` array from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
     ///
     /// # Panic
     /// Will panic, if field `sec_coarse` of `Meas2` obj does not match field `sec` of this `CollectionDay` obj.
     fn add_meas2(&mut self, m2: &Meas2) {
-        if self.sec != m2.get_sec_coarse() {
-            panic!(
-                "Mismatch of `sec_coarse` of Collection and Meas2 ({}, {})!",
-                self.sec,
-                m2.get_sec_coarse()
-            )
-        }
-        self.vec_bp.push(m2.get_bp());
-    }
-    /// Sets internal `sec: i64` and `day: f32` fields based on `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
-    /// **SHALL** only be called when internal `Vec<BpType>` (`vec_bp`) is empty (see `new_from_m2`).
-    ///
-    /// # Panic
-    /// Will panic, if called when internal `Vec<BpType>` (`vec_bp`) is **NOT** empty.
-    fn set_time(&mut self, m2: &Meas2) {
-        if self.get_sample_size() == 0 {
-            self.day = m2.get_day_coarse();
-            self.sec = m2.get_sec_coarse();
-        } else {
-            panic!(
-                "Cannot change obj fields `sec`, `day` when internal `Vec<BpType>` (`vec_bp`) already contains elements!",
-            )
+        self.check_mut_config();
+
+        let meas = m2.get_bp();
+        let ref_seq = self.bp_seq.get_ref_seq_mut();
+        for idx in 0..3 {
+            ref_seq[idx].push(meas[idx]);
         }
     }
     /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
-    pub fn get_ref(&self) -> &Vec<BpType> {
-        &self.vec_bp
+    pub fn get_ref_mut(&mut self) -> &mut VecMeas2dType {
+        self.bp_seq.get_ref_seq_mut()
+    }
+    /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
+    pub fn get_ref(&self) -> &VecMeas2dType {
+        self.bp_seq.get_ref_seq()
     }
     /// Returns `len()` of the internal `Vec<BpType>` (`vec_bp`).
     pub fn get_sample_size(&self) -> usize {
-        self.vec_bp.len()
+        self.bp_seq.get_len()
     }
     /// Returns ref to grp struct `AnalyzeDay` obj.
     pub fn get_analysis_grp_ref(&self) -> &AnalyzeDay {
@@ -511,9 +517,30 @@ impl CollectionDay {
     pub fn get_analysis_pul_ref(&self) -> &AnalyzeResult {
         &self.analysis.get_pul()
     }
+
+    pub fn get_mut_config(&self) -> bool {
+        self.mut_config
+    }
+    pub fn check_mut_config(&self) {
+        if !self.get_mut_config() {
+            panic!("`self.mut_config` is `false`!")
+        }
+    }
+    /// Check if all objs in `Vec<Meas2>` have the same `sec_coarse` field as `m2_first` obj
+    fn check_coarse_match(vec_m2: &Vec<Meas2>, m2_first: &Meas2) {
+        let coarse_match = vec_m2
+            .iter()
+            .all(|x| x.get_sec_coarse() == m2_first.get_sec_coarse());
+        if !coarse_match {
+            panic!(
+                "Mismatch of `sec_coarse`s in `Vec<Meas2>` ({:?})!",
+                m2_first.get_sec_coarse()
+            )
+        }
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct CollectionMonth {
     /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
     /// - k -> `i64`
@@ -528,34 +555,48 @@ impl CollectionMonth {
         }
     }
     /// Create new `CollectionMonth` obj from `CollectionMeas2` obj
-    pub fn from_coll_m2(coll_m2: CollectionMeas2) -> Self {
-        let mut item = Self::new();
-        let vec_m2 = coll_m2.get_ref();
+    pub fn from_coll_m2_consume(mut coll_m2: CollectionMeas2) -> Self {
+        let mut ret_cm = Self::new();
 
-        for m2 in vec_m2 {
-            item.add_meas2(m2);
+        coll_m2.sort();
+        let vec_m2 = coll_m2.get_ref_mut();
+
+        // let mut wdt = 100;
+        while vec_m2.len() > 0 {
+            // wdt -= 1;
+            let sec = vec_m2.first().unwrap().get_sec_coarse();
+
+            let vec_extracted = vec_m2
+                .extract_if(.., |x| x.sec_coarse == sec)
+                .collect::<Vec<_>>();
+            // println!(
+            //     "Extracted {}. Remaining {}.",
+            //     vec_extracted.len(),
+            //     vec_m2.len()
+            // )
+            ret_cm.add_vec_m2(vec_extracted);
         }
-        item.finish();
+        // println!("[DEBUG] Extraction End. wdt={wdt}");
 
-        return item;
+        ret_cm.finish();
+
+        return ret_cm;
     }
     /// Add contents of `Meas2` obj to internal `HashMap` (`coll_day_map`).
-    pub fn add_meas2(&mut self, m2: &Meas2) {
-        let k = m2.get_sec_coarse();
+    pub fn add_vec_m2(&mut self, vec_m2: Vec<Meas2>) {
+        let sec = vec_m2.first().unwrap().get_sec_coarse();
 
-        // Check if key `k` is already in `HashMap` (`coll_day_map`)
-        // - Add if `Some` - Create new entry & insert if `None`
-        match self.coll_day_map.get_mut(&k) {
+        // Check if key `sec` is already in `HashMap` (`coll_day_map`)
+        match self.coll_day_map.get_mut(&sec) {
             Some(coll_day) => {
-                // Add measurement to `CollectionDay` obj in `HashMap`.
-                // This is handled by `CollectionDay::add_meas2`.
-                coll_day.add_meas2(m2);
+                panic!("`CollectionDay ` for key `{sec}` already in HashMap!")
             }
             None => {
                 // Create new `CollectionDay` obj *and* add measurement into it.
                 // (This is handled by `CollectionDay::new_from_m2` directly!!!)
                 // Then insert to `HashMap`.
-                self.coll_day_map.insert(k, CollectionDay::new_from_m2(&m2));
+                self.coll_day_map
+                    .insert(sec, CollectionDay::new_from_vec_m2(&vec_m2));
             }
         }
     }
@@ -595,7 +636,7 @@ impl CollectionMonth {
 #[derive(Debug)]
 struct AnalyzeDayBuilder {}
 impl AnalyzeDayBuilder {
-    pub fn build<'a>(vec_bp: &'a Vec<BpType>) -> AnalyzeDay {
+    pub fn build<'a>(bp_seq: &'a mut BpSequence) -> AnalyzeDay {
         let mut item = AnalyzeDay {
             a_result: [
                 AnalyzeResult::new("sys"),
@@ -605,13 +646,13 @@ impl AnalyzeDayBuilder {
         };
 
         // Create array of sample `Vec`s
-        let mut a_measurement: [Vec<f32>; 3] = Self::create_samples(&vec_bp);
+        // let mut a_measurement: [Vec<f32>; 3] = Self::create_samples(&bp_seq);
 
         // Get Q0,Q4 (min/max )
-        Self::calc_min_max(&mut item, &a_measurement);
+        Self::calc_min_max(&mut item, bp_seq);
 
         // Calc Q1,Q2,Q3 & IQR & Whiskers
-        Self::calc_quartile(&mut item, &a_measurement);
+        Self::calc_quartile(&mut item, bp_seq);
 
         return item;
     }
@@ -643,9 +684,11 @@ impl AnalyzeDayBuilder {
         }
         return a_measurement;
     }
-    fn calc_min_max(item: &mut AnalyzeDay, a_measurement: &[Vec<f32>; 3]) {
-        for idx_m in 0..a_measurement.len() {
-            let vec_x = &a_measurement[idx_m];
+    fn calc_min_max(item: &mut AnalyzeDay, bp_seq: &BpSequence) {
+        let bp_vec2d = bp_seq.get_ref_seq();
+
+        for idx_m in 0..bp_vec2d.len() {
+            let vec_x = bp_seq.get_ref_meas(idx_m);
             let res = &mut item.a_result[idx_m];
             res.quartile[0] = vec_x.first().unwrap().clone();
             res.quartile[4] = vec_x.last().unwrap().clone();
@@ -680,8 +723,8 @@ impl AnalyzeDayBuilder {
     ///
     /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
     /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
-    fn calc_quartile(item: &mut AnalyzeDay, a_measurement: &[Vec<f32>; 3]) {
-        let sample_size: usize = a_measurement.first().unwrap().len();
+    fn calc_quartile(item: &mut AnalyzeDay, bp_seq: &BpSequence) {
+        let sample_size: usize = bp_seq.get_len();
 
         // Array of quartile percentages p
         let a_p: [f32; _] = [0.0, 0.25, 0.5, 0.75, 1.0];
@@ -694,8 +737,8 @@ impl AnalyzeDayBuilder {
             let (k, a) = Self::calc_quartile_param(sample_size, p);
 
             // For sys,dia,pul: Calc Q[idx_p]
-            'Loop_SysDiaPul_1: for idx_m in 0..a_measurement.len() {
-                let vec_x = &a_measurement[idx_m];
+            'Loop_SysDiaPul_1: for idx_m in 0..bp_seq.get_ref_seq().len() {
+                let vec_x = bp_seq.get_ref_meas(idx_m);
                 let res = &mut item.a_result[idx_m];
                 if vec_x.len() > 1 {
                     res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
@@ -706,8 +749,8 @@ impl AnalyzeDayBuilder {
         }
 
         // For sys,dia,pul: Calc IQR,whiskers
-        'Loop_SysDiaPul_2: for idx_m in 0..a_measurement.len() {
-            let vec_x = &a_measurement[idx_m];
+        'Loop_SysDiaPul_2: for idx_m in 0..bp_seq.get_ref_seq().len() {
+            let vec_x = bp_seq.get_ref_meas(idx_m);
             let res = &mut item.a_result[idx_m];
             // Calc IQR (interquartile range)
             res.iqr = res.quartile[3] - res.quartile[1];
@@ -754,7 +797,7 @@ impl AnalyzeDayBuilder {
         let a = temp - _k;
         (k, a)
     }
-    fn check_outlier_upper(res: &mut AnalyzeResult, vec_x: &Vec<f32>) {
+    fn check_outlier_upper(res: &mut AnalyzeResult, vec_x: &VecMeasType) {
         let len = vec_x.len();
         let lim_u = res.quartile[3] + 1.5 * res.iqr;
 
@@ -779,7 +822,7 @@ impl AnalyzeDayBuilder {
             }
         }
     }
-    fn check_outlier_lower(res: &mut AnalyzeResult, vec_x: &Vec<f32>) {
+    fn check_outlier_lower(res: &mut AnalyzeResult, vec_x: &VecMeasType) {
         let len = vec_x.len();
         let lim_l = res.quartile[1] - 1.5 * res.iqr;
 
