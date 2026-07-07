@@ -7,6 +7,8 @@ use chrono::Utc;
 use clap::Parser;
 use serde::Deserialize;
 use serde::Serialize;
+use std::cmp::max;
+use std::cmp::min;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
@@ -48,6 +50,90 @@ struct Cli {
     /// Rebuild CSV file
     #[arg(short, long)]
     rebuild: bool,
+}
+
+// ################################################################
+
+struct F32Vec2d {
+    f32_vec_2d: Vec<Vec<f32>>,
+}
+impl F32Vec2d {
+    fn new() -> Self {
+        Self {
+            f32_vec_2d: Vec::<Vec<f32>>::new(),
+        }
+    }
+    fn new_x(size: usize) -> Self {
+        Self {
+            f32_vec_2d: Vec::<Vec<f32>>::with_capacity(size),
+        }
+    }
+    fn new_xy(size: usize, len: usize) -> Self {
+        let mut item = Self {
+            f32_vec_2d: Vec::<Vec<f32>>::with_capacity(size),
+        };
+        for i in 0..size {
+            item.f32_vec_2d.push(Vec::<f32>::with_capacity(len));
+        }
+
+        return item;
+    }
+    fn get_ref_seq(&mut self) -> &Vec<Vec<f32>> {
+        &mut self.f32_vec_2d
+    }
+    fn get_ref_meas(&mut self, idx: usize) -> &mut Vec<f32> {
+        if idx >= self.f32_vec_2d.len() {
+            panic!(
+                "Out-of-bounds index '{idx}' (sequence size: {})",
+                self.f32_vec_2d.len()
+            )
+        } else {
+            &mut self.f32_vec_2d[idx]
+        }
+    }
+    fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+        let seq = &self.f32_vec_2d;
+        let _min = seq
+            .iter()
+            .fold(usize::MAX, |(_min), v_f32| min(_min, v_f32.capacity()));
+        let _max = seq
+            .iter()
+            .fold(usize::MIN, |(_max), v_f32| max(_max, v_f32.capacity()));
+        (seq.capacity(), _min..=_max)
+    }
+    fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+        let seq = &self.f32_vec_2d;
+        let _min = seq
+            .iter()
+            .fold(usize::MAX, |(_min), v_f32| min(_min, v_f32.len()));
+        let _max = seq
+            .iter()
+            .fold(usize::MIN, |(_max), v_f32| max(_max, v_f32.len()));
+        (seq.len(), _min..=_max)
+    }
+}
+
+struct BpSequence {
+    f32_seq_struct: F32Vec2d,
+}
+impl BpSequence {
+    fn new(len: usize) -> Self {
+        Self {
+            f32_seq_struct: F32Vec2d::new_xy(3, len),
+        }
+    }
+    fn get_ref_seq(&mut self) -> &Vec<Vec<f32>> {
+        self.f32_seq_struct.get_ref_seq()
+    }
+    fn get_ref_meas(&mut self, idx: usize) -> &mut Vec<f32> {
+        self.f32_seq_struct.get_ref_meas(idx)
+    }
+    fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+        self.f32_seq_struct.get_dim_capacity()
+    }
+    fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+        self.f32_seq_struct.get_dim_filled()
+    }
 }
 
 // ################################################################
