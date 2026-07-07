@@ -57,6 +57,7 @@ struct Cli {
 
 // ################################################################
 
+#[derive(Debug, Serialize, Deserialize)]
 struct F32Vec2d {
     f32_vec_2d: VecMeas2dType,
 }
@@ -81,17 +82,45 @@ impl F32Vec2d {
 
         return item;
     }
-    fn get_ref_seq(&mut self) -> &VecMeas2dType {
+    fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
         &mut self.f32_vec_2d
     }
-    fn get_ref_meas(&mut self, idx: usize) -> &mut VecMeasType {
+    fn get_ref_seq(&self) -> &VecMeas2dType {
+        &self.f32_vec_2d
+    }
+    fn get_ref_meas_mut(&mut self, idx: usize) -> &mut VecMeasType {
+        self.check_idx_size(idx);
+        &mut self.f32_vec_2d[idx]
+    }
+    fn get_ref_meas(&self, idx: usize) -> &VecMeasType {
+        self.check_idx_size(idx);
+        &self.f32_vec_2d[idx]
+    }
+    fn check_idx_size(&self, idx: usize) {
         if idx >= self.f32_vec_2d.len() {
             panic!(
                 "Out-of-bounds index '{idx}' (sequence size: {})",
                 self.f32_vec_2d.len()
             )
-        } else {
-            &mut self.f32_vec_2d[idx]
+        }
+    }
+    fn validate_shrink(&mut self) {
+        let (_, len) = self.get_dim_filled();
+        if len.is_empty() {
+            panic!("range is_empty ({len:?})!");
+        }
+        if len.start() != len.end() {
+            panic!("`F32Vec2d` obj is not equally filled ({len:?})!");
+        }
+        for v in self.get_ref_seq_mut() {
+            v.shrink_to_fit();
+        }
+    }
+    fn sort_seq(&mut self) {
+        let (size, _) = self.get_dim_filled();
+
+        for idx_m in 0..size {
+            self.get_ref_meas_mut(idx_m).sort_by(f32::total_cmp);
         }
     }
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
@@ -116,6 +145,7 @@ impl F32Vec2d {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 struct BpSequence {
     f32_seq_struct: F32Vec2d,
 }
@@ -125,17 +155,34 @@ impl BpSequence {
             f32_seq_struct: F32Vec2d::new_xy(3, len),
         }
     }
-    fn get_ref_seq(&mut self) -> &VecMeas2dType {
+    fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
+        self.f32_seq_struct.get_ref_seq_mut()
+    }
+    fn get_ref_seq(&self) -> &VecMeas2dType {
         self.f32_seq_struct.get_ref_seq()
     }
-    fn get_ref_meas(&mut self, idx: usize) -> &mut VecMeasType {
+    fn get_ref_meas_mut(&mut self, idx: usize) -> &mut VecMeasType {
+        self.f32_seq_struct.get_ref_meas_mut(idx)
+    }
+    fn get_ref_meas(&self, idx: usize) -> &VecMeasType {
         self.f32_seq_struct.get_ref_meas(idx)
+    }
+    fn validate_shrink(&mut self) {
+        self.f32_seq_struct.validate_shrink();
     }
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         self.f32_seq_struct.get_dim_capacity()
     }
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         self.f32_seq_struct.get_dim_filled()
+    }
+    fn get_len(&self) -> (usize) {
+        let (_, r) = self.f32_seq_struct.get_dim_filled();
+        r.end().to_owned()
+    }
+
+    fn sort_seq(&mut self) {
+        self.f32_seq_struct.sort_seq();
     }
 }
 
