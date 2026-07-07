@@ -660,8 +660,8 @@ impl AnalyzeDayBuilder {
 
             // Calc upper/lower whisker limits
             // Check for outliers outside whiskers
-            Self::check_outlier_upper(vec_x, res);
-            Self::check_outlier_lower(vec_x, res);
+            Self::check_outlier_upper(res, vec_x);
+            Self::check_outlier_lower(res, vec_x);
         }
     }
     /// Calculates the parameters `k` and `a` for the calculation of the quartiles.
@@ -700,7 +700,7 @@ impl AnalyzeDayBuilder {
         let a = temp - _k;
         (k, a)
     }
-    fn check_outlier_upper(vec_x: &Vec<f32>, res: &mut AnalyzeResult) {
+    fn check_outlier_upper(res: &mut AnalyzeResult, vec_x: &Vec<f32>) {
         let len = vec_x.len();
         let lim_u = res.quartile[3] + 1.5 * res.iqr;
 
@@ -725,7 +725,7 @@ impl AnalyzeDayBuilder {
             }
         }
     }
-    fn check_outlier_lower(vec_x: &Vec<f32>, res: &mut AnalyzeResult) {
+    fn check_outlier_lower(res: &mut AnalyzeResult, vec_x: &Vec<f32>) {
         let len = vec_x.len();
         let lim_l = res.quartile[1] - 1.5 * res.iqr;
 
