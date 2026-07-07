@@ -207,35 +207,35 @@ impl<'a> Meas2<'a> {
 }
 
 #[derive(Debug)]
-struct CollectionMeas1 {
-    vec_meas1: Vec<MeasCsv>,
+struct CollectionCsv {
+    vec_csv: Vec<MeasCsv>,
 }
-impl CollectionMeas1 {
+impl CollectionCsv {
     pub fn new() -> Self {
         Self {
-            vec_meas1: Vec::new(),
+            vec_csv: Vec::new(),
         }
     }
     pub fn new_with_capacity(capacity: usize) -> Self {
         Self {
-            vec_meas1: Vec::with_capacity(capacity),
+            vec_csv: Vec::with_capacity(capacity),
         }
     }
     /// Add (and consume) a `MeasCsv` object to vector field.
-    pub fn add_meas1_consume(&mut self, meas_csv: MeasCsv) {
-        self.vec_meas1.push(meas_csv);
+    pub fn add_csv_consume(&mut self, meas_csv: MeasCsv) {
+        self.vec_csv.push(meas_csv);
     }
     /// Clear vector field.
     pub fn clear(&mut self) {
-        self.vec_meas1.clear();
+        self.vec_csv.clear();
     }
     /// Get ref to vector field.
     pub fn get_ref(&self) -> &Vec<MeasCsv> {
-        &self.vec_meas1
+        &self.vec_csv
     }
     /// Sort collection vector by fields `date`, `time`
     pub fn sort(&mut self) {
-        self.vec_meas1
+        self.vec_csv
             .sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
     }
     /// Create 'Meas2 collection' object from this
@@ -246,24 +246,24 @@ impl CollectionMeas1 {
 
 #[derive(Debug)]
 struct CollectionMeas2<'a> {
-    coll_meas1: &'a CollectionMeas1,
+    coll_csv: &'a CollectionCsv,
     vec_meas2: Vec<Meas2<'a>>,
     day_zero: DateTime<Utc>,
 }
 impl<'a> CollectionMeas2<'a> {
-    pub fn from_coll_m1(coll_meas1: &'a CollectionMeas1, interval: u8) -> CollectionMeas2<'a> {
-        let v_ref = coll_meas1.get_ref();
+    pub fn from_coll_m1(coll_csv: &'a CollectionCsv, interval: u8) -> CollectionMeas2<'a> {
+        let v_ref = coll_csv.get_ref();
         let v_size = v_ref.len();
         if v_size == 0 {
-            panic!("'coll_meas1' is empty!")
+            panic!("'coll_csv' is empty!")
         }
 
-        // Determine `day_zero` from first entry in 'CollectionMeas1'
+        // Determine `day_zero` from first entry in 'CollectionCsv' obj
         let day_zero = (&v_ref[0]).get_day_zero();
 
         // Create 'CollectionMeas2' object
         let mut coll: CollectionMeas2<'a> = CollectionMeas2 {
-            coll_meas1,
+            coll_csv,
             vec_meas2: Vec::with_capacity(v_size),
             day_zero,
         };
@@ -786,7 +786,7 @@ fn main() {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_output(csv_collection: &CollectionMeas1) {
+fn worker_output(csv_collection: &CollectionCsv) {
     let coll_m2 = csv_collection.to_coll_m2(2);
 
     let coll_month = CollectionMonth::from_coll_m2(coll_m2);
@@ -844,7 +844,7 @@ fn worker_output(csv_collection: &CollectionMeas1) {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_collection: &CollectionMeas1) {
+fn worker_csv_rebuild(csv_collection: &CollectionCsv) {
     let path_string = get_file_path_string();
     // Open CSV File and reset content
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
@@ -866,7 +866,7 @@ fn worker_csv_rebuild(csv_collection: &CollectionMeas1) {
         .expect(&format!("Unable to save File '{path_string}'."));
 }
 
-fn worker_csv_status(csv_collection: &CollectionMeas1) {
+fn worker_csv_status(csv_collection: &CollectionCsv) {
     let csv_entries = csv_collection.get_ref();
     let date_ym = get_date_ym();
 
@@ -969,7 +969,7 @@ fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
     fh_csv
 }
 
-fn read_csv_content() -> Result<CollectionMeas1, Box<dyn std::error::Error>> {
+fn read_csv_content() -> Result<CollectionCsv, Box<dyn std::error::Error>> {
     let path_string = get_file_path_string();
 
     let fh_csv = open_csv_file(&path_string, CsvOpenMode::Read);
@@ -981,13 +981,13 @@ fn read_csv_content() -> Result<CollectionMeas1, Box<dyn std::error::Error>> {
 
     let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
     // let mut ret: Vec<MeasCsv> = Vec::with_capacity(records.len());
-    let mut coll = CollectionMeas1::new_with_capacity(records.len());
+    let mut coll = CollectionCsv::new_with_capacity(records.len());
 
     for result in records {
         let entry: MeasCsv = result?;
         // println!("{:?}", entry);
         // ret.push(entry);
-        coll.add_meas1_consume(entry);
+        coll.add_csv_consume(entry);
     }
 
     // // Sort vector of Measurement by date, time
