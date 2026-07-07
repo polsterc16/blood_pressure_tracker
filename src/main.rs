@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(unused_labels)]
 use chrono::DateTime;
 use chrono::Local;
 use chrono::NaiveDateTime;
@@ -77,7 +78,7 @@ impl F32Vec2d {
         let mut item = Self {
             f32_vec_2d: Vec::<VecMeasType>::with_capacity(size),
         };
-        for i in 0..size {
+        for _ in 0..size {
             item.f32_vec_2d.push(Vec::<f32>::with_capacity(len));
         }
 
@@ -128,20 +129,20 @@ impl F32Vec2d {
         let seq = &self.f32_vec_2d;
         let _min = seq
             .iter()
-            .fold(usize::MAX, |(_min), v_f32| min(_min, v_f32.capacity()));
+            .fold(usize::MAX, |_min, v_f32| min(_min, v_f32.capacity()));
         let _max = seq
             .iter()
-            .fold(usize::MIN, |(_max), v_f32| max(_max, v_f32.capacity()));
+            .fold(usize::MIN, |_max, v_f32| max(_max, v_f32.capacity()));
         (seq.capacity(), _min..=_max)
     }
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         let seq = &self.f32_vec_2d;
         let _min = seq
             .iter()
-            .fold(usize::MAX, |(_min), v_f32| min(_min, v_f32.len()));
+            .fold(usize::MAX, |_min, v_f32| min(_min, v_f32.len()));
         let _max = seq
             .iter()
-            .fold(usize::MIN, |(_max), v_f32| max(_max, v_f32.len()));
+            .fold(usize::MIN, |_max, v_f32| max(_max, v_f32.len()));
         (seq.len(), _min..=_max)
     }
 }
@@ -177,7 +178,7 @@ impl BpSequence {
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         self.f32_seq_struct.get_dim_filled()
     }
-    fn get_len(&self) -> (usize) {
+    fn get_len(&self) -> usize {
         let (_, r) = self.f32_seq_struct.get_dim_filled();
         r.end().to_owned()
     }
@@ -264,7 +265,7 @@ impl MeasCsv {
         day_1 - TimeDelta::days(1)
     }
     /// Create 'Meas2' object from this
-    pub fn to_m2(&'_ self, day_zero: DateTime<Utc>, interval: u8) -> Meas2 {
+    pub fn to_m2(&self, day_zero: DateTime<Utc>, interval: u8) -> Meas2 {
         Meas2::new(&self, day_zero, interval)
     }
 }
@@ -589,7 +590,7 @@ impl CollectionMonth {
 
         // Check if key `sec` is already in `HashMap` (`coll_day_map`)
         match self.coll_day_map.get_mut(&sec) {
-            Some(coll_day) => {
+            Some(_) => {
                 panic!("`CollectionDay ` for key `{sec}` already in HashMap!")
             }
             None => {
@@ -604,14 +605,14 @@ impl CollectionMonth {
     /// Perform analysis on all `CollectionDay` obj in `HashMap`
     pub fn finish(&mut self) {
         for k in self.get_key_sorted() {
-            let mut day = self.coll_day_map.get_mut(&k).unwrap();
+            let day = self.coll_day_map.get_mut(&k).unwrap();
             day.perform_analysis();
         }
     }
-    /// Clears internal `HashMap` (`coll_day_map`)
-    pub fn clear(&mut self) {
-        self.coll_day_map.clear();
-    }
+    // /// Clears internal `HashMap` (`coll_day_map`)
+    // pub fn clear(&mut self) {
+    //     self.coll_day_map.clear();
+    // }
     /// Returns ref to internal `HashMap` (`coll_day_map`)
     pub fn get_ref(&self) -> &CollDayHashType {
         &self.coll_day_map
@@ -666,25 +667,25 @@ impl AnalyzeDayBuilder {
             ],
         }
     }
-    fn create_samples<'a>(vec_bp: &'a Vec<BpType>) -> [Vec<f32>; 3] {
-        let len = vec_bp.len();
-        let mut a_measurement: [Vec<f32>; 3] = [
-            Vec::<f32>::with_capacity(len),
-            Vec::<f32>::with_capacity(len),
-            Vec::<f32>::with_capacity(len),
-        ];
-        // Insert all samples into their respective `Vec`
-        for bp_line in vec_bp {
-            a_measurement[0].push(bp_line[0]);
-            a_measurement[1].push(bp_line[1]);
-            a_measurement[2].push(bp_line[2]);
-        }
-        // Sort all sample `Vec`s
-        for mut vec_x in &mut a_measurement {
-            vec_x.sort_by(f32::total_cmp);
-        }
-        return a_measurement;
-    }
+    // fn create_samples<'a>(vec_bp: &'a Vec<BpType>) -> [Vec<f32>; 3] {
+    //     let len = vec_bp.len();
+    //     let mut a_measurement: [Vec<f32>; 3] = [
+    //         Vec::<f32>::with_capacity(len),
+    //         Vec::<f32>::with_capacity(len),
+    //         Vec::<f32>::with_capacity(len),
+    //     ];
+    //     // Insert all samples into their respective `Vec`
+    //     for bp_line in vec_bp {
+    //         a_measurement[0].push(bp_line[0]);
+    //         a_measurement[1].push(bp_line[1]);
+    //         a_measurement[2].push(bp_line[2]);
+    //     }
+    //     // Sort all sample `Vec`s
+    //     for mut vec_x in &mut a_measurement {
+    //         vec_x.sort_by(f32::total_cmp);
+    //     }
+    //     return a_measurement;
+    // }
     fn calc_min_max(item: &mut AnalyzeDay, bp_seq: &BpSequence) {
         let bp_vec2d = bp_seq.get_ref_seq();
 
@@ -984,56 +985,56 @@ fn worker_output(csv_collection: &CollectionCsv) {
     let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
     println!("{pretty}");
 
-    // println!("{:?}", cm.get_ref());
-    let hm = coll_month.get_ref();
-    let keys = coll_month.get_key_sorted();
-    println!("keys (# {}): {:?}", keys.len(), keys);
+    // // println!("{:?}", cm.get_ref());
+    // let hm = coll_month.get_ref();
+    // let keys = coll_month.get_key_sorted();
+    // println!("keys (# {}): {:?}", keys.len(), keys);
 
-    for k in keys {
-        if let Some(cd) = hm.get(&k) {
-            let size = cd.get_sample_size();
-            let mut r = cd.get_analysis_sys_ref();
-            let t_sys = format!(
-                "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
-                r.get_name(),
-                r.get_whisker_lower(),
-                r.get_q1(),
-                r.get_q2(),
-                r.get_q3(),
-                r.get_whisker_upper(),
-                r.get_iqr(),
-                r.get_outlier().len()
-            );
-            r = cd.get_analysis_dia_ref();
-            let t_dia = format!(
-                "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
-                r.get_name(),
-                r.get_whisker_lower(),
-                r.get_q1(),
-                r.get_q2(),
-                r.get_q3(),
-                r.get_whisker_upper(),
-                r.get_iqr(),
-                r.get_outlier().len()
-            );
-            r = cd.get_analysis_pul_ref();
-            let t_pul = format!(
-                "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
-                r.get_name(),
-                r.get_whisker_lower(),
-                r.get_q1(),
-                r.get_q2(),
-                r.get_q3(),
-                r.get_whisker_upper(),
-                r.get_iqr(),
-                r.get_outlier().len()
-            );
-            println!("\n[{k}, {:.2}] #Samples: {}", cd.day, cd.get_sample_size());
-            println!("\t{}", t_sys);
-            println!("\t{}", t_dia);
-            println!("\t{}", t_pul);
-        }
-    }
+    // for k in keys {
+    //     if let Some(cd) = hm.get(&k) {
+    //         let size = cd.get_sample_size();
+    //         let mut r = cd.get_analysis_sys_ref();
+    //         let t_sys = format!(
+    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+    //             r.get_name(),
+    //             r.get_whisker_lower(),
+    //             r.get_q1(),
+    //             r.get_q2(),
+    //             r.get_q3(),
+    //             r.get_whisker_upper(),
+    //             r.get_iqr(),
+    //             r.get_outlier().len()
+    //         );
+    //         r = cd.get_analysis_dia_ref();
+    //         let t_dia = format!(
+    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+    //             r.get_name(),
+    //             r.get_whisker_lower(),
+    //             r.get_q1(),
+    //             r.get_q2(),
+    //             r.get_q3(),
+    //             r.get_whisker_upper(),
+    //             r.get_iqr(),
+    //             r.get_outlier().len()
+    //         );
+    //         r = cd.get_analysis_pul_ref();
+    //         let t_pul = format!(
+    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+    //             r.get_name(),
+    //             r.get_whisker_lower(),
+    //             r.get_q1(),
+    //             r.get_q2(),
+    //             r.get_q3(),
+    //             r.get_whisker_upper(),
+    //             r.get_iqr(),
+    //             r.get_outlier().len()
+    //         );
+    //         println!("\n[{k}, {:.2}] #Samples: {}", cd.day, cd.get_sample_size());
+    //         println!("\t{}", t_sys);
+    //         println!("\t{}", t_dia);
+    //         println!("\t{}", t_pul);
+    //     }
+    // }
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
