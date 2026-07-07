@@ -30,6 +30,9 @@ type BpType = [f32; 3];
 /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
 type CollDayHashType = HashMap<i64, CollectionDay>;
 
+type VecMeasType = Vec<f32>;
+type VecMeas2dType = Vec<Vec<f32>>;
+
 // ################################################################
 
 #[derive(Debug, Parser)]
@@ -55,22 +58,22 @@ struct Cli {
 // ################################################################
 
 struct F32Vec2d {
-    f32_vec_2d: Vec<Vec<f32>>,
+    f32_vec_2d: VecMeas2dType,
 }
 impl F32Vec2d {
     fn new() -> Self {
         Self {
-            f32_vec_2d: Vec::<Vec<f32>>::new(),
+            f32_vec_2d: Vec::<VecMeasType>::new(),
         }
     }
     fn new_x(size: usize) -> Self {
         Self {
-            f32_vec_2d: Vec::<Vec<f32>>::with_capacity(size),
+            f32_vec_2d: Vec::<VecMeasType>::with_capacity(size),
         }
     }
     fn new_xy(size: usize, len: usize) -> Self {
         let mut item = Self {
-            f32_vec_2d: Vec::<Vec<f32>>::with_capacity(size),
+            f32_vec_2d: Vec::<VecMeasType>::with_capacity(size),
         };
         for i in 0..size {
             item.f32_vec_2d.push(Vec::<f32>::with_capacity(len));
@@ -78,10 +81,10 @@ impl F32Vec2d {
 
         return item;
     }
-    fn get_ref_seq(&mut self) -> &Vec<Vec<f32>> {
+    fn get_ref_seq(&mut self) -> &VecMeas2dType {
         &mut self.f32_vec_2d
     }
-    fn get_ref_meas(&mut self, idx: usize) -> &mut Vec<f32> {
+    fn get_ref_meas(&mut self, idx: usize) -> &mut VecMeasType {
         if idx >= self.f32_vec_2d.len() {
             panic!(
                 "Out-of-bounds index '{idx}' (sequence size: {})",
@@ -122,10 +125,10 @@ impl BpSequence {
             f32_seq_struct: F32Vec2d::new_xy(3, len),
         }
     }
-    fn get_ref_seq(&mut self) -> &Vec<Vec<f32>> {
+    fn get_ref_seq(&mut self) -> &VecMeas2dType {
         self.f32_seq_struct.get_ref_seq()
     }
-    fn get_ref_meas(&mut self, idx: usize) -> &mut Vec<f32> {
+    fn get_ref_meas(&mut self, idx: usize) -> &mut VecMeasType {
         self.f32_seq_struct.get_ref_meas(idx)
     }
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
