@@ -6,6 +6,7 @@ use chrono::TimeDelta;
 use chrono::Utc;
 use clap::Parser;
 use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
@@ -290,7 +291,7 @@ impl<'a> CollectionMeas2<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct CollectionDay {
     day: f32,
     sec: i64,
@@ -372,7 +373,7 @@ impl CollectionDay {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct CollectionMonth {
     /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
     /// - k -> `i64`
@@ -665,7 +666,7 @@ impl AnalyzeDayBuilder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct AnalyzeDay {
     // ref_vec_bp: &'a Vec<BpType>,
     a_result: [AnalyzeResult; 3],
@@ -682,7 +683,7 @@ impl AnalyzeDay {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct AnalyzeResult {
     name: String,
     quartile: [f32; 5],
@@ -790,6 +791,14 @@ fn worker_output(csv_collection: &CollectionCsv) {
     let coll_m2 = csv_collection.to_coll_m2(2);
 
     let coll_month = CollectionMonth::from_coll_m2(coll_m2);
+
+    println!("Attempt json export");
+    let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
+    println!("{pretty}");
+
+    if true {
+        return;
+    }
 
     // println!("{:?}", cm.get_ref());
     let hm = coll_month.get_ref();
