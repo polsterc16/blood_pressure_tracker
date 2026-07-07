@@ -380,10 +380,23 @@ struct CollectionMonth {
     coll_day_map: CollDayHashType,
 }
 impl CollectionMonth {
+    /// Create empty `CollectionMonth` obj
     pub fn new() -> Self {
         Self {
             coll_day_map: HashMap::new(),
         }
+    }
+    /// Create new `CollectionMonth` obj from `CollectionMeas2` obj
+    pub fn from_coll_m2(coll_m2: CollectionMeas2) -> Self {
+        let mut item = Self::new();
+        let vec_m2 = coll_m2.get_ref();
+
+        for m2 in vec_m2 {
+            item.add_meas2(m2);
+        }
+        item.finish();
+
+        return item;
     }
     /// Add contents of `Meas2` obj to internal `HashMap` (`coll_day_map`).
     pub fn add_meas2(&mut self, m2: &Meas2) {
