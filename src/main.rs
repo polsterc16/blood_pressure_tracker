@@ -511,7 +511,7 @@ impl CollectionDay {
     /// Perform analysis based on `bp_seq` (`BpSequence`) to create `AnalyzeDay` obj
     pub fn perform_analysis(&mut self) {
         self.sort_seq();
-        self.analysis = AnalyzeDayBuilder::build(&mut self.bp_seq);
+        self.analysis = AnalyzeDayBuilder::build(&self.bp_seq);
         self.set_completed();
     }
     /// Add `BpType` array from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
@@ -688,7 +688,7 @@ impl CollectionMonth {
 #[derive(Debug)]
 struct AnalyzeDayBuilder {}
 impl AnalyzeDayBuilder {
-    pub fn build<'a>(bp_seq: &'a mut BpSequence) -> AnalyzeDay {
+    pub fn build<'a>(bp_seq: &'a BpSequence) -> AnalyzeDay {
         let mut item = AnalyzeDay([
             AnalyzeResult::new("sys"),
             AnalyzeResult::new("dia"),
