@@ -409,12 +409,17 @@ impl CollectionMeas2 {
     fn add_meas2_consume(&mut self, meas_2: Meas2) {
         self.vec_meas2.push(meas_2);
     }
+    /// Get mut ref to vector field.
     fn get_ref_mut(&mut self) -> &mut Vec<Meas2> {
         &mut self.vec_meas2
     }
     /// Get ref to vector field.
     pub fn get_ref(&self) -> &Vec<Meas2> {
         &self.vec_meas2
+    }
+    /// Get ref to day_zero.
+    pub fn get_day0(&self) -> &DateTime<Utc> {
+        &self.day_zero
     }
     /// Sort collection vector by field `datetime`
     pub fn sort(&mut self) {
