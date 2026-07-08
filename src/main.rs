@@ -211,8 +211,7 @@ impl BpSequence {
         self.0.get_dim_filled()
     }
     fn get_len(&self) -> usize {
-        let (_, r) = self.0.get_dim_filled();
-        r.end().to_owned()
+        self.0.get_num_meas()
     }
 
     fn sort_seq(&mut self) {
