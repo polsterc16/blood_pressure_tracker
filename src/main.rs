@@ -28,9 +28,9 @@ const SECS_IN_DAYS_F32: f32 = 86400_f32;
 
 // ################################################################
 
-/// Array describing a blood pressure measurement,
-/// containing (`dia`, `sys`, `pul`).
-type BpType = [f32; 3];
+/// Array describing a blood pressure measurement sample,
+/// consisting of [[`dia`, `sys`, `pul`]].
+type BpSampleType = [f32; 3];
 /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
 type CollDayHashType = HashMap<i64, CollectionDay>;
 
@@ -274,7 +274,7 @@ impl MeasCsv {
         }
     }
     /// Returns the BP as array [`sys`, `dia`, `pul`]
-    pub fn get_bp(&self) -> BpType {
+    pub fn get_bp(&self) -> BpSampleType {
         [self.sys, self.dia, self.pul]
     }
     /// Returns the BP field `sys`
@@ -327,7 +327,7 @@ impl MeasCsv {
 /// Measurement-2 exists only as long as the ref MeasCsv
 #[derive(Debug)]
 struct Meas2 {
-    bp: BpType,
+    bp: BpSampleType,
     datetime: DateTime<Utc>,
     day_fine: f32,
     day_coarse: f32,
@@ -382,7 +382,7 @@ impl Meas2 {
         &self.datetime
     }
     /// Returns the BP as array [`sys`, `dia`, `pul`]
-    pub fn get_bp(&self) -> BpType {
+    pub fn get_bp(&self) -> BpSampleType {
         self.bp
     }
     /// Returns the BP field `sys`
