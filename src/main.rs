@@ -534,8 +534,7 @@ impl CollectionDay {
     }
     /// Perform analysis based on `bp_seq:BpSequence` to create `AnalyzeDay` obj
     pub fn perform_analysis(&mut self) {
-        self.sort_seq();
-        self.analysis = AnalyzeDayBuilder::build(&self.bp_seq);
+        self.analysis = AnalyzeDayBuilder::build(&mut self.bp_seq);
         self.set_completed();
     }
     /// Add singe measurement array `BpType` from `Meas2` obj to internal `bp_seq:BpSequence`.
@@ -714,15 +713,15 @@ impl CollectionMonth {
 #[derive(Debug)]
 struct AnalyzeDayBuilder {}
 impl AnalyzeDayBuilder {
-    pub fn build<'a>(bp_seq: &'a BpSequence) -> AnalyzeDay {
+    pub fn build<'a>(bp_seq: &'a mut BpSequence) -> AnalyzeDay {
         let mut item = AnalyzeDay([
             AnalyzeResult::new("sys"),
             AnalyzeResult::new("dia"),
             AnalyzeResult::new("pul"),
         ]);
 
-        // Create array of sample `Vec`s
-        // let mut a_measurement: [Vec<f32>; 3] = Self::create_samples(&bp_seq);
+        // sort vectors in sequence
+        bp_seq.sort_seq();
 
         // Get Q0,Q4 (min/max )
         Self::calc_min_max(&mut item, bp_seq);
