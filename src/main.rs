@@ -327,7 +327,7 @@ impl MeasCsv {
 /// Measurement-2 exists only as long as the ref MeasCsv
 #[derive(Debug)]
 struct Meas2 {
-    bp: BpSampleType,
+    bp_sample: BpSampleType,
     datetime: DateTime<Utc>,
     day_fine: f32,
     day_coarse: f32,
@@ -337,7 +337,7 @@ struct Meas2 {
 impl Meas2 {
     pub fn new<'a>(meas_csv: &'a MeasCsv, day_zero: DateTime<Utc>, interval: u8) -> Meas2 {
         let mut m2 = Meas2 {
-            bp: meas_csv.get_bp(),
+            bp_sample: meas_csv.get_bp(),
             datetime: meas_csv.get_datetime(),
             day_fine: 0_f32,
             day_coarse: 0_f32,
@@ -383,19 +383,19 @@ impl Meas2 {
     }
     /// Returns the BP as array [`sys`, `dia`, `pul`]
     pub fn get_bp(&self) -> BpSampleType {
-        self.bp
+        self.bp_sample
     }
     /// Returns the BP field `sys`
     pub fn get_bp_sys(&self) -> f32 {
-        self.bp[0]
+        self.bp_sample[0]
     }
     /// Returns the BP field `dia`
     pub fn get_bp_dia(&self) -> f32 {
-        self.bp[1]
+        self.bp_sample[1]
     }
     /// Returns the BP field `pul`
     pub fn get_bp_pul(&self) -> f32 {
-        self.bp[2]
+        self.bp_sample[2]
     }
 }
 
