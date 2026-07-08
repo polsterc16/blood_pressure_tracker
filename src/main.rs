@@ -724,7 +724,7 @@ impl CollectionMonth {
 struct AnalyzeDayBuilder {}
 impl AnalyzeDayBuilder {
     pub fn build<'a>(bp_seq: &'a mut BpSequence) -> AnalyzeDay {
-        let mut item = AnalyzeDay([
+        let mut ret_item = AnalyzeDay([
             AnalyzeResult::new("sys"),
             AnalyzeResult::new("dia"),
             AnalyzeResult::new("pul"),
@@ -734,12 +734,12 @@ impl AnalyzeDayBuilder {
         bp_seq.sort_seq();
 
         // Get Q0,Q4 (min/max )
-        Self::calc_min_max(&mut item, bp_seq);
+        Self::calc_min_max(&mut ret_item, bp_seq);
 
         // Calc Q1,Q2,Q3 & IQR & Whiskers
-        Self::calc_quartile(&mut item, bp_seq);
+        Self::calc_quartile(&mut ret_item, bp_seq);
 
-        return item;
+        return ret_item;
     }
     pub fn build_empty() -> AnalyzeDay {
         AnalyzeDay([
@@ -767,12 +767,15 @@ impl AnalyzeDayBuilder {
     //     }
     //     return a_measurement;
     // }
-    fn calc_min_max(item: &mut AnalyzeDay, bp_seq: &BpSequence) {
+    fn calc_min_max(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
         let bp_vec2d = bp_seq.get_ref_seq_vec();
 
-        for idx_m in 0..bp_vec2d.len() {
+        for idx_m in 0..bp_seq.get_meas_num() {
+            // get sample vector for this measurement
             let vec_x = bp_seq.get_ref_meas_vec(idx_m);
-            let res = &mut item.0[idx_m];
+            // get internal `AnalyzeResult` obj
+            let res = &mut ret_item.0[idx_m];
+            // get min and max
             res.quartile[0] = vec_x.first().unwrap().clone();
             res.quartile[4] = vec_x.last().unwrap().clone();
         }
@@ -806,8 +809,8 @@ impl AnalyzeDayBuilder {
     ///
     /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
     /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
-    fn calc_quartile(item: &mut AnalyzeDay, bp_seq: &BpSequence) {
-        let sample_size: usize = bp_seq.get_num_meas();
+    fn calc_quartile(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
+        let vec_len: usize = bp_seq.get_meas_vec_len();
 
         // Array of quartile percentages p
         let a_p: [f32; _] = [0.0, 0.25, 0.5, 0.75, 1.0];
@@ -816,16 +819,21 @@ impl AnalyzeDayBuilder {
 
         // Go through Q1,Q2,Q3 (25%,50%,75%)
         'Loop_Q123: for idx_p in a_idx_p {
+            // get current percentage and calc parameter
             let p = a_p[idx_p];
-            let (k, a) = Self::calc_quartile_param(sample_size, p);
+            let (k, a) = Self::calc_quartile_param(vec_len, p);
 
-            // For sys,dia,pul: Calc Q[idx_p]
-            'Loop_SysDiaPul_1: for idx_m in 0..bp_seq.get_ref_seq_vec().len() {
+            // For sys,dia,pul: Calc Quartile for current percentage `p`
+            'Loop_SysDiaPul_1: for idx_m in 0..bp_seq.get_meas_num() {
+                // get sample vector for this measurment
                 let vec_x = bp_seq.get_ref_meas_vec(idx_m);
-                let res = &mut item.0[idx_m];
+                // get `AnalyzeResult` obj for this measurment
+                let res = &mut ret_item.0[idx_m];
+                // calculate Quartile for current percentage `p`
                 if vec_x.len() > 1 {
                     res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
                 } else {
+                    // excemption for short sample vectors
                     res.quartile[idx_p] = vec_x[k];
                 }
             }
@@ -833,8 +841,10 @@ impl AnalyzeDayBuilder {
 
         // For sys,dia,pul: Calc IQR,whiskers
         'Loop_SysDiaPul_2: for idx_m in 0..bp_seq.get_ref_seq_vec().len() {
+            // get sample vector for this measurment
             let vec_x = bp_seq.get_ref_meas_vec(idx_m);
-            let res = &mut item.0[idx_m];
+            // get `AnalyzeResult` obj for this measurment
+            let res = &mut ret_item.0[idx_m];
             // Calc IQR (interquartile range)
             res.iqr = res.quartile[3] - res.quartile[1];
 
@@ -872,8 +882,8 @@ impl AnalyzeDayBuilder {
     ///
     /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
     /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
-    fn calc_quartile_param(sample_size: usize, p: f32) -> (usize, f32) {
-        let temp = p * (sample_size - 1) as f32;
+    fn calc_quartile_param(sample_len: usize, p: f32) -> (usize, f32) {
+        let temp = p * (sample_len - 1) as f32;
         let _k = temp.floor();
 
         let k = _k as usize;
