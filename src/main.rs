@@ -80,40 +80,40 @@ impl F32Vec2d {
     fn new_xy(size_x: usize, len_y: usize) -> Self {
         // create sequence (`VecMeas2dType`) for `size_x` measurements
         let mut ret_item = Self::new_x(size_x);
-        let mut ref_seq = ret_item.get_ref_seq_mut();
+        let mut ref_seq_vec = ret_item.get_ref_seq_vec_mut();
 
         // add `size_x` measurement `vec`s (`VecMeasType`) with capacity `len_y`
         for _ in 0..size_x {
-            ref_seq.push(VecMeasType::with_capacity(len_y));
+            ref_seq_vec.push(VecMeasType::with_capacity(len_y));
         }
         return ret_item;
     }
     /// Get mut ref to internal sequence of measurements (`VecMeas2dType`)
-    fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
+    fn get_ref_seq_vec_mut(&mut self) -> &mut VecMeas2dType {
         &mut self.0
     }
     /// Get ref to internal sequence of measurements (`VecMeas2dType`)
-    fn get_ref_seq(&self) -> &VecMeas2dType {
+    fn get_ref_seq_vec(&self) -> &VecMeas2dType {
         &self.0
     }
     /// Get mut ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
     /// # Panic
     /// Panics if `idx_m` not is in range of valid indexes.
-    fn get_ref_meas_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
+    fn get_ref_meas_vec_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
         self.check_meas_idx_range_panic(idx_m);
         &mut self.0[idx_m]
     }
     /// Get ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
     /// # Panic
     /// Panics if `idx_m` not is in range of valid indexes.
-    fn get_ref_meas(&self, idx_m: usize) -> &VecMeasType {
+    fn get_ref_meas_vec(&self, idx_m: usize) -> &VecMeasType {
         self.check_meas_idx_range_panic(idx_m);
         &self.0[idx_m]
     }
     /// Returns number of measurements
     #[inline]
     fn get_num_meas(&self) -> usize {
-        self.get_ref_seq().len()
+        self.get_ref_seq_vec().len()
     }
     /// Check if `idx_m` is in range of valid indexes for measurements in the sequence.
     /// ***
@@ -147,38 +147,38 @@ impl F32Vec2d {
             panic!("`F32Vec2d` obj is not equally filled ({len:?})!");
         }
         // apply `shrink_to_fit` to all measurement `vec`s
-        for vec_m in self.get_ref_seq_mut() {
+        for vec_m in self.get_ref_seq_vec_mut() {
             vec_m.shrink_to_fit();
         }
     }
     /// Sorts all measurement `vec`s individually.
     fn sort_seq(&mut self) {
         for idx_m in 0..self.get_num_meas() {
-            self.get_ref_meas_mut(idx_m).sort_by(f32::total_cmp);
+            self.get_ref_meas_vec_mut(idx_m).sort_by(f32::total_cmp);
         }
     }
     /// Get the vector capacity in both dimensions:
     /// 1. Capacity of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
     /// 2. Capacity range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
-        let seq = self.get_ref_seq();
-        let _min = seq
+        let seq_vec = self.get_ref_seq_vec();
+        let _min = seq_vec
             .iter()
             .fold(usize::MAX, |_min, v_f32| min(_min, v_f32.capacity()));
-        let _max = seq
+        let _max = seq_vec
             .iter()
             .fold(usize::MIN, |_max, v_f32| max(_max, v_f32.capacity()));
-        (seq.capacity(), _min..=_max)
+        (seq_vec.capacity(), _min..=_max)
     }
     /// Get the vector length in both dimensions:
     /// 1. Length of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
     /// 2. Length range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
-        let seq = self.get_ref_seq();
-        let _min = seq
+        let seq_vec = self.get_ref_seq_vec();
+        let _min = seq_vec
             .iter()
             .fold(usize::MAX, |_min, v_f32| min(_min, v_f32.len()));
-        let _max = seq
+        let _max = seq_vec
             .iter()
             .fold(usize::MIN, |_max, v_f32| max(_max, v_f32.len()));
         (self.get_num_meas(), _min..=_max)
@@ -192,16 +192,16 @@ impl BpSequence {
         Self(F32Vec2d::new_xy(3, len))
     }
     fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
-        self.0.get_ref_seq_mut()
+        self.0.get_ref_seq_vec_mut()
     }
     fn get_ref_seq(&self) -> &VecMeas2dType {
-        self.0.get_ref_seq()
+        self.0.get_ref_seq_vec()
     }
     fn get_ref_meas_mut(&mut self, idx: usize) -> &mut VecMeasType {
-        self.0.get_ref_meas_mut(idx)
+        self.0.get_ref_meas_vec_mut(idx)
     }
     fn get_ref_meas(&self, idx: usize) -> &VecMeasType {
-        self.0.get_ref_meas(idx)
+        self.0.get_ref_meas_vec(idx)
     }
     fn validate_shrink(&mut self) {
         self.0.validate_shrink();
