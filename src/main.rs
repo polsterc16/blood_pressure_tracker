@@ -110,7 +110,7 @@ impl F32Vec2d {
         self.check_meas_idx_range_panic(idx_m);
         &self.0[idx_m]
     }
-    /// Returns number of measurements
+    /// Returns number of measurement vectors in sequence.
     #[inline]
     fn get_num_meas(&self) -> usize {
         self.get_ref_seq_vec().len()
