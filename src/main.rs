@@ -544,15 +544,22 @@ impl CollectionDay {
 }
 
 #[derive(Serialize, Deserialize, DebugPretty)]
-struct CollectionMonth(CollDayHashType);
+struct CollectionMonth {
+    day_zero: DateTimeSimple,
+    hash_map: CollDayHashType,
+}
 impl CollectionMonth {
     /// Create empty `CollectionMonth` obj
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self {
+            day_zero: DateTimeSimple::new(),
+            hash_map: HashMap::new(),
+        }
     }
     /// Create new `CollectionMonth` obj from `CollectionMeas2` obj
     pub fn from_coll_m2_consume(mut coll_m2: CollectionMeas2) -> Self {
         let mut ret_cm = Self::new();
+        ret_cm.set_day_zero(coll_m2.get_day0());
 
         coll_m2.sort();
         let vec_m2 = coll_m2.get_ref_mut();
@@ -578,12 +585,16 @@ impl CollectionMonth {
 
         return ret_cm;
     }
+
+    pub fn set_day_zero(&mut self, day_0: &DateTime<Utc>) {
+        self.day_zero.set_utc(&day_0);
+    }
     /// Add contents of `Meas2` obj to internal `HashMap`.
     pub fn add_vec_m2(&mut self, vec_m2: Vec<Meas2>) {
         let sec = vec_m2.first().unwrap().get_sec_coarse();
 
         // Check if key `sec` is already in `HashMap`
-        match self.0.get_mut(&sec) {
+        match self.get_ref_mut().get_mut(&sec) {
             Some(_) => {
                 panic!("`CollectionDay ` for key `{sec}` already in HashMap!")
             }
@@ -591,14 +602,15 @@ impl CollectionMonth {
                 // Create new `CollectionDay` obj *and* add measurement into it.
                 // (This is handled by `CollectionDay::new_from_m2` directly!!!)
                 // Then insert to `HashMap`.
-                self.0.insert(sec, CollectionDay::new_from_vec_m2(&vec_m2));
+                self.get_ref_mut()
+                    .insert(sec, CollectionDay::new_from_vec_m2(&vec_m2));
             }
         }
     }
     /// Perform analysis on all `CollectionDay` obj in `HashMap`
     pub fn finish(&mut self) {
         for k in self.get_key_sorted() {
-            let day = self.0.get_mut(&k).unwrap();
+            let day = self.get_ref_mut().get_mut(&k).unwrap();
             day.perform_analysis();
         }
     }
@@ -606,23 +618,27 @@ impl CollectionMonth {
     // pub fn clear(&mut self) {
     //     self.coll_day_map.clear();
     // }
+    /// Returns mut ref to internal `HashMap`
+    pub fn get_ref_mut(&mut self) -> &mut CollDayHashType {
+        &mut self.hash_map
+    }
     /// Returns ref to internal `HashMap`
     pub fn get_ref(&self) -> &CollDayHashType {
-        &self.0
+        &self.hash_map
     }
     /// Returns 'length' of the `CollectionDay` obj corresponding to the key `k` (`i64`).\
     /// The 'length' of the `CollectionDay` obj is `len()` of its internal `Vec<(BpType)>`.
     ///
     /// `Option<usize>`: Returns `Some(usize)`, if key `k` in map, `None` otherwise.
     pub fn get_sample_size(&self, k: i64) -> Option<usize> {
-        match self.0.get(&k) {
+        match self.get_ref().get(&k) {
             Some(v) => Some(v.get_sample_size()),
             None => None,
         }
     }
     /// Get all keys (`i64`) from internal `HashMap` , sorted as `Vec<i64>`.
     pub fn get_key_sorted(&self) -> Vec<i64> {
-        let mut vec_keys: Vec<i64> = self.0.keys().map(|x| x.clone()).collect();
+        let mut vec_keys: Vec<i64> = self.get_ref().keys().map(|x| x.clone()).collect();
         vec_keys.sort();
         vec_keys
     }
