@@ -427,7 +427,7 @@ struct CollectionDay {
     bp_seq: BpSequence,
     analysis: AnalyzeDay,
     #[serde(skip)]
-    mut_config: bool,
+    completed: bool,
 }
 impl CollectionDay {
     /// Creates new `CollectionDay` obj from provided `Meas2` obj.\
@@ -444,7 +444,7 @@ impl CollectionDay {
             sec: m2_first.get_sec_coarse(),
             bp_seq: BpSequence::new(vec_m2.len()),
             analysis: AnalyzeDayBuilder::build_empty(),
-            mut_config: true,
+            completed: false,
         };
 
         for m2 in vec_m2 {
@@ -460,17 +460,16 @@ impl CollectionDay {
     fn sort_seq(&mut self) {
         self.bp_seq.sort_seq();
     }
-    /// Perform analysis based on `vec_bp` (`Vec<BpType>`) to create `AnalyzeDay` obj
+    /// Perform analysis based on `bp_seq` (`BpSequence`) to create `AnalyzeDay` obj
     pub fn perform_analysis(&mut self) {
         self.sort_seq();
         self.analysis = AnalyzeDayBuilder::build(&mut self.bp_seq);
+        self.set_completed();
     }
     /// Add `BpType` array from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
     ///
-    /// # Panic
-    /// Will panic, if field `sec_coarse` of `Meas2` obj does not match field `sec` of this `CollectionDay` obj.
     fn add_meas2(&mut self, m2: &Meas2) {
-        self.check_mut_config();
+        self.check_can_edit();
 
         let meas = m2.get_bp();
         let ref_seq = self.bp_seq.get_ref_seq_mut();
@@ -507,15 +506,23 @@ impl CollectionDay {
         &self.analysis.get_pul()
     }
 
-    pub fn get_mut_config(&self) -> bool {
-        self.mut_config
+    pub fn set_completed(&mut self) {
+        self.completed = true;
     }
-    pub fn check_mut_config(&self) {
-        if !self.get_mut_config() {
-            panic!("`self.mut_config` is `false`!")
+    pub fn get_completed(&self) -> bool {
+        self.completed
+    }
+    /// Check if all objs in `Vec<Meas2>` have the same `sec_coarse` field as `m2_first` obj
+    /// # Panic
+    /// Will panic, if any element in `vec_m2` has a different field `sec_coarse` to the provided `m2_first` obj
+    pub fn check_can_edit(&self) {
+        if self.get_completed() {
+            panic!("Obj is set to 'completed'!")
         }
     }
     /// Check if all objs in `Vec<Meas2>` have the same `sec_coarse` field as `m2_first` obj
+    /// # Panic
+    /// Will panic, if any element in `vec_m2` has a different field `sec_coarse` to the provided `m2_first` obj
     fn check_coarse_match(vec_m2: &Vec<Meas2>, m2_first: &Meas2) {
         let coarse_match = vec_m2
             .iter()
