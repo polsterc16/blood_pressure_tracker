@@ -60,49 +60,40 @@ struct Cli {
 // ################################################################
 
 #[derive(Debug, Serialize, Deserialize)]
-struct F32Vec2d {
-    f32_vec_2d: VecMeas2dType,
-}
+struct F32Vec2d(VecMeas2dType);
 impl F32Vec2d {
     fn new() -> Self {
-        Self {
-            f32_vec_2d: Vec::<VecMeasType>::new(),
-        }
+        Self(Vec::<VecMeasType>::new())
     }
     fn new_x(size: usize) -> Self {
-        Self {
-            f32_vec_2d: Vec::<VecMeasType>::with_capacity(size),
-        }
+        Self(Vec::<VecMeasType>::with_capacity(size))
     }
     fn new_xy(size: usize, len: usize) -> Self {
-        let mut item = Self {
-            f32_vec_2d: Vec::<VecMeasType>::with_capacity(size),
-        };
+        let mut item = Self(Vec::<VecMeasType>::with_capacity(size));
         for _ in 0..size {
-            item.f32_vec_2d.push(Vec::<f32>::with_capacity(len));
+            item.0.push(Vec::<f32>::with_capacity(len));
         }
-
         return item;
     }
     fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
-        &mut self.f32_vec_2d
+        &mut self.0
     }
     fn get_ref_seq(&self) -> &VecMeas2dType {
-        &self.f32_vec_2d
+        &self.0
     }
     fn get_ref_meas_mut(&mut self, idx: usize) -> &mut VecMeasType {
         self.check_idx_size(idx);
-        &mut self.f32_vec_2d[idx]
+        &mut self.0[idx]
     }
     fn get_ref_meas(&self, idx: usize) -> &VecMeasType {
         self.check_idx_size(idx);
-        &self.f32_vec_2d[idx]
+        &self.0[idx]
     }
     fn check_idx_size(&self, idx: usize) {
-        if idx >= self.f32_vec_2d.len() {
+        if idx >= self.0.len() {
             panic!(
                 "Out-of-bounds index '{idx}' (sequence size: {})",
-                self.f32_vec_2d.len()
+                self.0.len()
             )
         }
     }
@@ -126,7 +117,7 @@ impl F32Vec2d {
         }
     }
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
-        let seq = &self.f32_vec_2d;
+        let seq = self.get_ref_seq();
         let _min = seq
             .iter()
             .fold(usize::MAX, |_min, v_f32| min(_min, v_f32.capacity()));
@@ -136,7 +127,7 @@ impl F32Vec2d {
         (seq.capacity(), _min..=_max)
     }
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
-        let seq = &self.f32_vec_2d;
+        let seq = self.get_ref_seq();
         let _min = seq
             .iter()
             .fold(usize::MAX, |_min, v_f32| min(_min, v_f32.len()));
@@ -148,43 +139,39 @@ impl F32Vec2d {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct BpSequence {
-    f32_seq_struct: F32Vec2d,
-}
+struct BpSequence(F32Vec2d);
 impl BpSequence {
     fn new(len: usize) -> Self {
-        Self {
-            f32_seq_struct: F32Vec2d::new_xy(3, len),
-        }
+        Self(F32Vec2d::new_xy(3, len))
     }
     fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
-        self.f32_seq_struct.get_ref_seq_mut()
+        self.0.get_ref_seq_mut()
     }
     fn get_ref_seq(&self) -> &VecMeas2dType {
-        self.f32_seq_struct.get_ref_seq()
+        self.0.get_ref_seq()
     }
     fn get_ref_meas_mut(&mut self, idx: usize) -> &mut VecMeasType {
-        self.f32_seq_struct.get_ref_meas_mut(idx)
+        self.0.get_ref_meas_mut(idx)
     }
     fn get_ref_meas(&self, idx: usize) -> &VecMeasType {
-        self.f32_seq_struct.get_ref_meas(idx)
+        self.0.get_ref_meas(idx)
     }
     fn validate_shrink(&mut self) {
-        self.f32_seq_struct.validate_shrink();
+        self.0.validate_shrink();
     }
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
-        self.f32_seq_struct.get_dim_capacity()
+        self.0.get_dim_capacity()
     }
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
-        self.f32_seq_struct.get_dim_filled()
+        self.0.get_dim_filled()
     }
     fn get_len(&self) -> usize {
-        let (_, r) = self.f32_seq_struct.get_dim_filled();
+        let (_, r) = self.0.get_dim_filled();
         r.end().to_owned()
     }
 
     fn sort_seq(&mut self) {
-        self.f32_seq_struct.sort_seq();
+        self.0.sort_seq();
     }
 }
 
@@ -543,18 +530,11 @@ impl CollectionDay {
 }
 
 #[derive(Serialize, Deserialize, DebugPretty)]
-struct CollectionMonth {
-    /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
-    /// - k -> `i64`
-    /// - v -> `CollectionDay`
-    coll_day_map: CollDayHashType,
-}
+struct CollectionMonth(CollDayHashType);
 impl CollectionMonth {
     /// Create empty `CollectionMonth` obj
     pub fn new() -> Self {
-        Self {
-            coll_day_map: HashMap::new(),
-        }
+        Self(HashMap::new())
     }
     /// Create new `CollectionMonth` obj from `CollectionMeas2` obj
     pub fn from_coll_m2_consume(mut coll_m2: CollectionMeas2) -> Self {
@@ -584,12 +564,12 @@ impl CollectionMonth {
 
         return ret_cm;
     }
-    /// Add contents of `Meas2` obj to internal `HashMap` (`coll_day_map`).
+    /// Add contents of `Meas2` obj to internal `HashMap`.
     pub fn add_vec_m2(&mut self, vec_m2: Vec<Meas2>) {
         let sec = vec_m2.first().unwrap().get_sec_coarse();
 
-        // Check if key `sec` is already in `HashMap` (`coll_day_map`)
-        match self.coll_day_map.get_mut(&sec) {
+        // Check if key `sec` is already in `HashMap`
+        match self.0.get_mut(&sec) {
             Some(_) => {
                 panic!("`CollectionDay ` for key `{sec}` already in HashMap!")
             }
@@ -597,39 +577,38 @@ impl CollectionMonth {
                 // Create new `CollectionDay` obj *and* add measurement into it.
                 // (This is handled by `CollectionDay::new_from_m2` directly!!!)
                 // Then insert to `HashMap`.
-                self.coll_day_map
-                    .insert(sec, CollectionDay::new_from_vec_m2(&vec_m2));
+                self.0.insert(sec, CollectionDay::new_from_vec_m2(&vec_m2));
             }
         }
     }
     /// Perform analysis on all `CollectionDay` obj in `HashMap`
     pub fn finish(&mut self) {
         for k in self.get_key_sorted() {
-            let day = self.coll_day_map.get_mut(&k).unwrap();
+            let day = self.0.get_mut(&k).unwrap();
             day.perform_analysis();
         }
     }
-    // /// Clears internal `HashMap` (`coll_day_map`)
+    // /// Clears internal `HashMap`
     // pub fn clear(&mut self) {
     //     self.coll_day_map.clear();
     // }
-    /// Returns ref to internal `HashMap` (`coll_day_map`)
+    /// Returns ref to internal `HashMap`
     pub fn get_ref(&self) -> &CollDayHashType {
-        &self.coll_day_map
+        &self.0
     }
     /// Returns 'length' of the `CollectionDay` obj corresponding to the key `k` (`i64`).\
     /// The 'length' of the `CollectionDay` obj is `len()` of its internal `Vec<(BpType)>`.
     ///
     /// `Option<usize>`: Returns `Some(usize)`, if key `k` in map, `None` otherwise.
     pub fn get_sample_size(&self, k: i64) -> Option<usize> {
-        match self.coll_day_map.get(&k) {
+        match self.0.get(&k) {
             Some(v) => Some(v.get_sample_size()),
             None => None,
         }
     }
-    /// Get all keys (`i64`) from internal `HashMap` (`coll_day_map`), sorted as `Vec<i64>`.
+    /// Get all keys (`i64`) from internal `HashMap` , sorted as `Vec<i64>`.
     pub fn get_key_sorted(&self) -> Vec<i64> {
-        let mut vec_keys: Vec<i64> = self.coll_day_map.keys().map(|x| x.clone()).collect();
+        let mut vec_keys: Vec<i64> = self.0.keys().map(|x| x.clone()).collect();
         vec_keys.sort();
         vec_keys
     }
@@ -639,13 +618,11 @@ impl CollectionMonth {
 struct AnalyzeDayBuilder {}
 impl AnalyzeDayBuilder {
     pub fn build<'a>(bp_seq: &'a mut BpSequence) -> AnalyzeDay {
-        let mut item = AnalyzeDay {
-            a_result: [
-                AnalyzeResult::new("sys"),
-                AnalyzeResult::new("dia"),
-                AnalyzeResult::new("pul"),
-            ],
-        };
+        let mut item = AnalyzeDay([
+            AnalyzeResult::new("sys"),
+            AnalyzeResult::new("dia"),
+            AnalyzeResult::new("pul"),
+        ]);
 
         // Create array of sample `Vec`s
         // let mut a_measurement: [Vec<f32>; 3] = Self::create_samples(&bp_seq);
@@ -659,13 +636,11 @@ impl AnalyzeDayBuilder {
         return item;
     }
     pub fn build_empty() -> AnalyzeDay {
-        AnalyzeDay {
-            a_result: [
-                AnalyzeResult::new("sys"),
-                AnalyzeResult::new("dia"),
-                AnalyzeResult::new("pul"),
-            ],
-        }
+        AnalyzeDay([
+            AnalyzeResult::new("sys"),
+            AnalyzeResult::new("dia"),
+            AnalyzeResult::new("pul"),
+        ])
     }
     // fn create_samples<'a>(vec_bp: &'a Vec<BpType>) -> [Vec<f32>; 3] {
     //     let len = vec_bp.len();
@@ -691,7 +666,7 @@ impl AnalyzeDayBuilder {
 
         for idx_m in 0..bp_vec2d.len() {
             let vec_x = bp_seq.get_ref_meas(idx_m);
-            let res = &mut item.a_result[idx_m];
+            let res = &mut item.0[idx_m];
             res.quartile[0] = vec_x.first().unwrap().clone();
             res.quartile[4] = vec_x.last().unwrap().clone();
         }
@@ -741,7 +716,7 @@ impl AnalyzeDayBuilder {
             // For sys,dia,pul: Calc Q[idx_p]
             'Loop_SysDiaPul_1: for idx_m in 0..bp_seq.get_ref_seq().len() {
                 let vec_x = bp_seq.get_ref_meas(idx_m);
-                let res = &mut item.a_result[idx_m];
+                let res = &mut item.0[idx_m];
                 if vec_x.len() > 1 {
                     res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
                 } else {
@@ -753,7 +728,7 @@ impl AnalyzeDayBuilder {
         // For sys,dia,pul: Calc IQR,whiskers
         'Loop_SysDiaPul_2: for idx_m in 0..bp_seq.get_ref_seq().len() {
             let vec_x = bp_seq.get_ref_meas(idx_m);
-            let res = &mut item.a_result[idx_m];
+            let res = &mut item.0[idx_m];
             // Calc IQR (interquartile range)
             res.iqr = res.quartile[3] - res.quartile[1];
 
@@ -852,19 +827,16 @@ impl AnalyzeDayBuilder {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct AnalyzeDay {
-    // ref_vec_bp: &'a Vec<BpType>,
-    a_result: [AnalyzeResult; 3],
-}
+struct AnalyzeDay([AnalyzeResult; 3]);
 impl AnalyzeDay {
     pub fn get_sys(&self) -> &AnalyzeResult {
-        &self.a_result[0]
+        &self.0[0]
     }
     pub fn get_dia(&self) -> &AnalyzeResult {
-        &self.a_result[1]
+        &self.0[1]
     }
     pub fn get_pul(&self) -> &AnalyzeResult {
-        &self.a_result[2]
+        &self.0[2]
     }
 }
 
