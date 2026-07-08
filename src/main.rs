@@ -185,39 +185,60 @@ impl F32Vec2d {
     }
 }
 
+/// Adaptation of [`F32Vec2d`] for blood pressure measurements (sequence of 3 measurement vectors).
 #[derive(Debug, Serialize, Deserialize)]
 struct BpSequence(F32Vec2d);
 impl BpSequence {
     fn new(len: usize) -> Self {
         Self(F32Vec2d::new_xy(3, len))
     }
-    fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
+    /// Get mut ref to internal sequence of measurements (`VecMeas2dType`)
+    fn get_ref_seq_vec_mut(&mut self) -> &mut VecMeas2dType {
         self.0.get_ref_seq_vec_mut()
     }
-    fn get_ref_seq(&self) -> &VecMeas2dType {
+    /// Get ref to internal sequence of measurements (`VecMeas2dType`)
+    fn get_ref_seq_vec(&self) -> &VecMeas2dType {
         self.0.get_ref_seq_vec()
     }
-    fn get_ref_meas_mut(&mut self, idx: usize) -> &mut VecMeasType {
-        self.0.get_ref_meas_vec_mut(idx)
+    /// Get mut ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
+    /// # Panic
+    /// Panics if `idx_m` not is in range of valid indexes.
+    fn get_ref_meas_vec_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
+        self.0.get_ref_meas_vec_mut(idx_m)
     }
-    fn get_ref_meas(&self, idx: usize) -> &VecMeasType {
-        self.0.get_ref_meas_vec(idx)
+    /// Get ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
+    /// # Panic
+    /// Panics if `idx_m` not is in range of valid indexes.
+    fn get_ref_meas_vec(&self, idx_m: usize) -> &VecMeasType {
+        self.0.get_ref_meas_vec(idx_m)
     }
+    /// Returns number of measurement vectors in sequence.
+    #[inline]
+    fn get_num_meas(&self) -> usize {
+        self.0.get_num_meas()
+    }
+    /// 1. Performs check if all measurement `vec`s are of the same length.
+    /// 2. Tries to shrink the capacity of all measurement `vec`s.
+    /// # Panic
+    /// Panics if measurement `vec`s are not of the same length.
     fn validate_shrink(&mut self) {
         self.0.validate_shrink();
     }
+    /// Sorts all measurement `vec`s individually.
+    fn sort_seq(&mut self) {
+        self.0.sort_seq();
+    }
+    /// Get the vector capacity in both dimensions:
+    /// 1. Capacity of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
+    /// 2. Capacity range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         self.0.get_dim_capacity()
     }
+    /// Get the vector length in both dimensions:
+    /// 1. Length of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
+    /// 2. Length range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         self.0.get_dim_filled()
-    }
-    fn get_len(&self) -> usize {
-        self.0.get_num_meas()
-    }
-
-    fn sort_seq(&mut self) {
-        self.0.sort_seq();
     }
 }
 
@@ -527,20 +548,20 @@ impl CollectionDay {
         let ref_seq = self.get_ref_mut();
 
         for idx_m in 0..3 {
-            self.bp_seq.get_ref_meas_mut(idx_m).push(meas[idx_m]);
+            self.bp_seq.get_ref_meas_vec_mut(idx_m).push(meas[idx_m]);
         }
     }
     /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
     pub fn get_ref_mut(&mut self) -> &mut VecMeas2dType {
-        self.bp_seq.get_ref_seq_mut()
+        self.bp_seq.get_ref_seq_vec_mut()
     }
     /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
     pub fn get_ref(&self) -> &VecMeas2dType {
-        self.bp_seq.get_ref_seq()
+        self.bp_seq.get_ref_seq_vec()
     }
     /// Returns `len()` of the internal `Vec<BpType>` (`vec_bp`).
     pub fn get_sample_size(&self) -> usize {
-        self.bp_seq.get_len()
+        self.bp_seq.get_num_meas()
     }
     /// Returns ref to grp struct `AnalyzeDay` obj.
     pub fn get_analysis_grp_ref(&self) -> &AnalyzeDay {
@@ -738,10 +759,10 @@ impl AnalyzeDayBuilder {
     //     return a_measurement;
     // }
     fn calc_min_max(item: &mut AnalyzeDay, bp_seq: &BpSequence) {
-        let bp_vec2d = bp_seq.get_ref_seq();
+        let bp_vec2d = bp_seq.get_ref_seq_vec();
 
         for idx_m in 0..bp_vec2d.len() {
-            let vec_x = bp_seq.get_ref_meas(idx_m);
+            let vec_x = bp_seq.get_ref_meas_vec(idx_m);
             let res = &mut item.0[idx_m];
             res.quartile[0] = vec_x.first().unwrap().clone();
             res.quartile[4] = vec_x.last().unwrap().clone();
@@ -777,7 +798,7 @@ impl AnalyzeDayBuilder {
     /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
     /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
     fn calc_quartile(item: &mut AnalyzeDay, bp_seq: &BpSequence) {
-        let sample_size: usize = bp_seq.get_len();
+        let sample_size: usize = bp_seq.get_num_meas();
 
         // Array of quartile percentages p
         let a_p: [f32; _] = [0.0, 0.25, 0.5, 0.75, 1.0];
@@ -790,8 +811,8 @@ impl AnalyzeDayBuilder {
             let (k, a) = Self::calc_quartile_param(sample_size, p);
 
             // For sys,dia,pul: Calc Q[idx_p]
-            'Loop_SysDiaPul_1: for idx_m in 0..bp_seq.get_ref_seq().len() {
-                let vec_x = bp_seq.get_ref_meas(idx_m);
+            'Loop_SysDiaPul_1: for idx_m in 0..bp_seq.get_ref_seq_vec().len() {
+                let vec_x = bp_seq.get_ref_meas_vec(idx_m);
                 let res = &mut item.0[idx_m];
                 if vec_x.len() > 1 {
                     res.quartile[idx_p] = vec_x[k] + a * (vec_x[k + 1] - vec_x[k]);
@@ -802,8 +823,8 @@ impl AnalyzeDayBuilder {
         }
 
         // For sys,dia,pul: Calc IQR,whiskers
-        'Loop_SysDiaPul_2: for idx_m in 0..bp_seq.get_ref_seq().len() {
-            let vec_x = bp_seq.get_ref_meas(idx_m);
+        'Loop_SysDiaPul_2: for idx_m in 0..bp_seq.get_ref_seq_vec().len() {
+            let vec_x = bp_seq.get_ref_meas_vec(idx_m);
             let res = &mut item.0[idx_m];
             // Calc IQR (interquartile range)
             res.iqr = res.quartile[3] - res.quartile[1];
