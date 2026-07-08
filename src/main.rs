@@ -20,6 +20,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
+use std::path::PathBuf;
 
 // ################################################################
 
@@ -1065,6 +1066,109 @@ impl DateTimeSimple {
     }
 }
 
+#[derive(Serialize, Deserialize, DebugPretty)]
+struct FileHandler {
+    path_dir: PathBuf,
+    path_file: PathBuf,
+}
+impl FileHandler {
+    pub fn new(directory: &str, file: &str) -> Self {
+        let p_dir = Path::new(&directory).to_owned();
+        let p_file = Path::new(&directory).join(&file).to_owned();
+
+        let mut ret_obj = Self {
+            path_dir: p_dir,
+            path_file: p_file,
+        };
+        ret_obj
+    }
+    fn get_path_dir(&self) -> &PathBuf {
+        &self.path_dir
+    }
+    fn get_path_file(&self) -> &PathBuf {
+        &self.path_file
+    }
+    /// Checks if directory exists and tries to create it, if not.
+    pub fn check_directory(&self) -> Result<(), std::io::Error> {
+        let path_dir = self.get_path_dir();
+        if path_dir.exists() {
+            return Ok(());
+        }
+        log_warning(&format!("Directory '{:?}' missing.", path_dir,));
+
+        match fs::create_dir(path_dir) {
+            Ok(_) => {
+                log_message(&format!("Directory '{:?}' created.", path_dir));
+                Ok(())
+            }
+            Err(e) => {
+                log_error(&format!("Unable to create directory '{:?}'.", path_dir));
+                Err(e)
+            }
+        }
+    }
+    /// Checks if file exists.
+    ///
+    /// | Case                     | Returns                                 |
+    /// | ------------------------ | --------------------------------------- |
+    /// | File does not exist      | `Ok( FileState::Missing )`              |
+    /// | File exists              | `Ok( FileState::Exists(filesize:u64) )` |
+    /// | Missing file permissions | `std::io::Error`                        |
+    pub fn check_file_exists(&self) -> Result<FileState, std::io::Error> {
+        let path_file = self.get_path_file();
+
+        if !path_file.exists() {
+            return Ok(FileState::Missing);
+        }
+        match fs::metadata(path_file) {
+            Ok(metadata) => {
+                return Ok(FileState::Exists(metadata.len()));
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    pub fn file_open(&self, mode: FileOpenMode) -> File {
+        let path_file = self.get_path_file();
+
+        let fh: File;
+        match mode {
+            FileOpenMode::Read => {
+                fh = OpenOptions::new()
+                    .read(true)
+                    .open(path_file)
+                    .expect(&format!(
+                        "Unable to open file '{:?}' in {:?}.",
+                        path_file, mode
+                    ));
+            }
+            FileOpenMode::WriteReset => {
+                fh = OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(path_file)
+                    .expect(&format!(
+                        "Unable to open file '{:?}' in {:?}.",
+                        path_file, mode
+                    ));
+            }
+            FileOpenMode::WriteAppend => {
+                fh = OpenOptions::new()
+                    .write(true)
+                    .append(true)
+                    .open(path_file)
+                    .expect(&format!(
+                        "Unable to open file '{:?}' in {:?}.",
+                        path_file, mode
+                    ));
+            }
+        }
+        return fh;
+    }
+}
+
 // ################################################################
 
 #[derive(Debug, PartialEq)]
@@ -1072,6 +1176,19 @@ enum CsvOpenMode {
     Read,
     WriteReset,
     WriteAppend,
+}
+
+#[derive(Debug, PartialEq)]
+enum FileOpenMode {
+    Read,
+    WriteReset,
+    WriteAppend,
+}
+
+#[derive(Debug, PartialEq)]
+enum FileState {
+    Missing,
+    Exists(u64),
 }
 
 // ################################################################
