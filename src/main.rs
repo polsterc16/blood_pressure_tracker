@@ -431,6 +431,7 @@ impl CollectionMeas2 {
 struct CollectionDay {
     day: f32,
     sec: i64,
+    sample_len: usize,
     bp_seq: BpSequence,
     analysis: AnalyzeDay,
     #[serde(skip)]
@@ -449,6 +450,7 @@ impl CollectionDay {
         let mut ret_cd = Self {
             day: m2_first.get_day_coarse(),
             sec: m2_first.get_sec_coarse(),
+            sample_len: vec_m2.len(),
             bp_seq: BpSequence::new(vec_m2.len()),
             analysis: AnalyzeDayBuilder::build_empty(),
             completed: false,
