@@ -95,11 +95,15 @@ impl F32Vec2d {
         &self.0
     }
     /// Get mut ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
+    /// # Panic
+    /// Panics if `idx_m` not is in range of valid indexes.
     fn get_ref_meas_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
         self.check_meas_idx_range_panic(idx_m);
         &mut self.0[idx_m]
     }
     /// Get ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
+    /// # Panic
+    /// Panics if `idx_m` not is in range of valid indexes.
     fn get_ref_meas(&self, idx_m: usize) -> &VecMeasType {
         self.check_meas_idx_range_panic(idx_m);
         &self.0[idx_m]
