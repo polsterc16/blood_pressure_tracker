@@ -34,7 +34,9 @@ type BpType = [f32; 3];
 /// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
 type CollDayHashType = HashMap<i64, CollectionDay>;
 
+/// Vector of measurement samples (`f32`)
 type VecMeasType = Vec<f32>;
+/// Vector of measurement vectors ([`VecMeasType`])
 type VecMeas2dType = Vec<VecMeasType>;
 
 // ################################################################
