@@ -110,16 +110,21 @@ impl F32Vec2d {
         self.check_meas_idx_range_panic(idx_m);
         &self.0[idx_m]
     }
-    /// Returns number of measurement vectors in sequence.
+    /// Returns *number* of measurement vectors in sequence.
     #[inline]
-    fn get_num_meas(&self) -> usize {
+    fn get_meas_num(&self) -> usize {
         self.get_ref_seq_vec().len()
+    }
+    /// Returns *length* of measurement vectors in sequence.
+    #[inline]
+    fn get_meas_vec_len(&self) -> usize {
+        self.get_ref_meas_vec(0).len()
     }
     /// Check if `idx_m` is in range of valid indexes for measurements in the sequence.
     /// ***
     /// See also [`check_meas_idx_range_panic`]
     fn check_meas_idx_range(&self, idx_m: usize) -> bool {
-        let r = 0..self.get_num_meas();
+        let r = 0..self.get_meas_num();
         return r.contains(&idx_m);
     }
     /// Check if `idx_m` is in range of valid indexes for measurements in the sequence.
@@ -128,7 +133,7 @@ impl F32Vec2d {
     /// ***
     /// See also [`check_meas_idx_range`]
     fn check_meas_idx_range_panic(&self, idx_m: usize) {
-        let r = 0..self.get_num_meas();
+        let r = 0..self.get_meas_num();
 
         if !r.contains(&idx_m) {
             panic!("Out-of-bounds index '{idx_m}' ({r:?})!")
@@ -153,7 +158,7 @@ impl F32Vec2d {
     }
     /// Sorts all measurement `vec`s individually.
     fn sort_seq(&mut self) {
-        for idx_m in 0..self.get_num_meas() {
+        for idx_m in 0..self.get_meas_num() {
             self.get_ref_meas_vec_mut(idx_m).sort_by(f32::total_cmp);
         }
     }
@@ -181,7 +186,7 @@ impl F32Vec2d {
         let _max = seq_vec
             .iter()
             .fold(usize::MIN, |_max, v_f32| max(_max, v_f32.len()));
-        (self.get_num_meas(), _min..=_max)
+        (self.get_meas_num(), _min..=_max)
     }
 }
 
@@ -212,10 +217,15 @@ impl BpSequence {
     fn get_ref_meas_vec(&self, idx_m: usize) -> &VecMeasType {
         self.0.get_ref_meas_vec(idx_m)
     }
-    /// Returns number of measurement vectors in sequence.
+    /// Returns *number* of measurement vectors in sequence.
     #[inline]
-    fn get_num_meas(&self) -> usize {
-        self.0.get_num_meas()
+    fn get_meas_num(&self) -> usize {
+        self.0.get_meas_num()
+    }
+    /// Returns *length* of measurement vectors in sequence.
+    #[inline]
+    fn get_meas_vec_len(&self) -> usize {
+        self.0.get_meas_vec_len()
     }
     /// 1. Performs check if all measurement `vec`s are of the same length.
     /// 2. Tries to shrink the capacity of all measurement `vec`s.
@@ -560,7 +570,7 @@ impl CollectionDay {
     }
     /// Returns `len()` of the internal `Vec<BpType>` (`vec_bp`).
     pub fn get_sample_size(&self) -> usize {
-        self.bp_seq.get_num_meas()
+        self.bp_seq.get_meas_num()
     }
     /// Returns ref to grp struct `AnalyzeDay` obj.
     pub fn get_analysis_grp_ref(&self) -> &AnalyzeDay {
