@@ -1,9 +1,11 @@
 #![allow(unused)]
 #![allow(unused_labels)]
 use chrono::DateTime;
+use chrono::Datelike;
 use chrono::Local;
 use chrono::NaiveDateTime;
 use chrono::TimeDelta;
+use chrono::Timelike;
 use chrono::Utc;
 use clap::Parser;
 use pretty_simple_display::DebugPretty;
@@ -908,6 +910,51 @@ impl AnalyzeResult {
     }
     fn has_outlier(&self) -> bool {
         self.outliers.len() > 0
+    }
+}
+
+#[derive(Serialize, Deserialize, DebugPretty)]
+#[allow(non_snake_case)]
+struct DateTimeSimple {
+    timestamp: i64,
+    Y: i32,
+    m: u32,
+    d: u32,
+    H: u32,
+    M: u32,
+    S: u32,
+}
+impl DateTimeSimple {
+    fn new() -> Self {
+        Self {
+            timestamp: 0,
+            Y: 0,
+            m: 0,
+            d: 0,
+            H: 0,
+            M: 0,
+            S: 0,
+        }
+    }
+    fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
+        Self {
+            timestamp: date_time_utc.timestamp(),
+            Y: date_time_utc.year(),
+            m: date_time_utc.month(),
+            d: date_time_utc.day(),
+            H: date_time_utc.hour(),
+            M: date_time_utc.minute(),
+            S: date_time_utc.second(),
+        }
+    }
+    fn set_utc(&mut self, date_time_utc: &DateTime<Utc>) {
+        self.timestamp = date_time_utc.timestamp();
+        self.Y = date_time_utc.year();
+        self.m = date_time_utc.month();
+        self.d = date_time_utc.day();
+        self.H = date_time_utc.hour();
+        self.M = date_time_utc.minute();
+        self.S = date_time_utc.second();
     }
 }
 
