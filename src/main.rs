@@ -35,7 +35,7 @@ type BpType = [f32; 3];
 type CollDayHashType = HashMap<i64, CollectionDay>;
 
 type VecMeasType = Vec<f32>;
-type VecMeas2dType = Vec<Vec<f32>>;
+type VecMeas2dType = Vec<VecMeasType>;
 
 // ################################################################
 
@@ -61,44 +61,77 @@ struct Cli {
 
 // ################################################################
 
+/// Sequence (`VecMeas2dType:Vec<VecMeasType>`) of measurements (`VecMeasType:Vec<f32>`).
 #[derive(Debug, Serialize, Deserialize)]
 struct F32Vec2d(VecMeas2dType);
 impl F32Vec2d {
+    /// Create new sequence (`VecMeas2dType`).
     fn new() -> Self {
         Self(Vec::<VecMeasType>::new())
     }
-    fn new_x(size: usize) -> Self {
-        Self(Vec::<VecMeasType>::with_capacity(size))
+    /// Create new sequence (`VecMeas2dType`) for `size_x` measurements (`VecMeasType`).
+    fn new_x(size_x: usize) -> Self {
+        Self(Vec::<VecMeasType>::with_capacity(size_x))
     }
-    fn new_xy(size: usize, len: usize) -> Self {
-        let mut item = Self(Vec::<VecMeasType>::with_capacity(size));
-        for _ in 0..size {
-            item.0.push(Vec::<f32>::with_capacity(len));
+    /// Create new sequence (`VecMeas2dType`) for `size_x` measurements (`VecMeasType`),
+    /// which each have reserved capacity `len_y`.
+    fn new_xy(size_x: usize, len_y: usize) -> Self {
+        // create sequence (`VecMeas2dType`) for `size_x` measurements
+        let mut ret_item = Self::new_x(size_x);
+        let mut ref_seq = ret_item.get_ref_seq_mut();
+
+        // add `size_x` measurement `vec`s (`VecMeasType`) with capacity `len_y`
+        for _ in 0..size_x {
+            ref_seq.push(VecMeasType::with_capacity(len_y));
         }
-        return item;
+        return ret_item;
     }
+    /// Get mut ref to internal sequence of measurements (`VecMeas2dType`)
     fn get_ref_seq_mut(&mut self) -> &mut VecMeas2dType {
         &mut self.0
     }
+    /// Get ref to internal sequence of measurements (`VecMeas2dType`)
     fn get_ref_seq(&self) -> &VecMeas2dType {
         &self.0
     }
-    fn get_ref_meas_mut(&mut self, idx: usize) -> &mut VecMeasType {
-        self.check_idx_size(idx);
-        &mut self.0[idx]
+    /// Get mut ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
+    fn get_ref_meas_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
+        self.check_meas_idx_range_panic(idx_m);
+        &mut self.0[idx_m]
     }
-    fn get_ref_meas(&self, idx: usize) -> &VecMeasType {
-        self.check_idx_size(idx);
-        &self.0[idx]
+    /// Get ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
+    fn get_ref_meas(&self, idx_m: usize) -> &VecMeasType {
+        self.check_meas_idx_range_panic(idx_m);
+        &self.0[idx_m]
     }
-    fn check_idx_size(&self, idx: usize) {
-        if idx >= self.0.len() {
-            panic!(
-                "Out-of-bounds index '{idx}' (sequence size: {})",
-                self.0.len()
-            )
+    /// Returns number of measurements
+    #[inline]
+    fn get_num_meas(&self) -> usize {
+        self.get_ref_seq().len()
+    }
+    /// Check if `idx_m` is in range of valid indexes for measurements in the sequence.
+    /// ***
+    /// See also [`check_meas_idx_range_panic`]
+    fn check_meas_idx_range(&self, idx_m: usize) -> bool {
+        let r = 0..self.get_num_meas();
+        return r.contains(&idx_m);
+    }
+    /// Check if `idx_m` is in range of valid indexes for measurements in the sequence.
+    /// # Panic
+    /// Panics if `idx_m` not is in range of valid indexes.
+    /// ***
+    /// See also [`check_meas_idx_range`]
+    fn check_meas_idx_range_panic(&self, idx_m: usize) {
+        let r = 0..self.get_num_meas();
+
+        if !r.contains(&idx_m) {
+            panic!("Out-of-bounds index '{idx_m}' ({r:?})!")
         }
     }
+    /// 1. Performs check if all measurement `vec`s are of the same length.
+    /// 2. Tries to shrink the capacity of all measurement `vec`s.
+    /// # Panic
+    /// Panics if measurement `vec`s are not of the same length.
     fn validate_shrink(&mut self) {
         let (_, len) = self.get_dim_filled();
         if len.is_empty() {
@@ -107,17 +140,20 @@ impl F32Vec2d {
         if len.start() != len.end() {
             panic!("`F32Vec2d` obj is not equally filled ({len:?})!");
         }
-        for v in self.get_ref_seq_mut() {
-            v.shrink_to_fit();
+        // apply `shrink_to_fit` to all measurement `vec`s
+        for vec_m in self.get_ref_seq_mut() {
+            vec_m.shrink_to_fit();
         }
     }
+    /// Sorts all measurement `vec`s individually.
     fn sort_seq(&mut self) {
-        let (size, _) = self.get_dim_filled();
-
-        for idx_m in 0..size {
+        for idx_m in 0..self.get_num_meas() {
             self.get_ref_meas_mut(idx_m).sort_by(f32::total_cmp);
         }
     }
+    /// Get the vector capacity in both dimensions:
+    /// 1. Capacity of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
+    /// 2. Capacity range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
     fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         let seq = self.get_ref_seq();
         let _min = seq
@@ -128,6 +164,9 @@ impl F32Vec2d {
             .fold(usize::MIN, |_max, v_f32| max(_max, v_f32.capacity()));
         (seq.capacity(), _min..=_max)
     }
+    /// Get the vector length in both dimensions:
+    /// 1. Length of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
+    /// 2. Length range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
     fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         let seq = self.get_ref_seq();
         let _min = seq
@@ -136,7 +175,7 @@ impl F32Vec2d {
         let _max = seq
             .iter()
             .fold(usize::MIN, |_max, v_f32| max(_max, v_f32.len()));
-        (seq.len(), _min..=_max)
+        (self.get_num_meas(), _min..=_max)
     }
 }
 
