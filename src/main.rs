@@ -477,9 +477,7 @@ struct CollectionDay {
     completed: bool,
 }
 impl CollectionDay {
-    /// Creates new `CollectionDay` obj from provided `Meas2` obj.\
-    /// Sets internal `sec: i64` and `day: f32` fields based on provided `Meas2` obj (fields `sec_coarse: i64`, `day_coarse: f32`).\
-    /// Adds `BpType` array from provided `Meas2` obj as first element to internal `Vec<BpType>` (`vec_bp`).
+    /// Creates new `CollectionDay` obj from provided `Vec<Meas2>`.
     pub fn new_from_vec_m2(vec_m2: &Vec<Meas2>) -> Self {
         let m2_first = vec_m2.first().unwrap();
 
@@ -504,25 +502,27 @@ impl CollectionDay {
 
         ret_cd
     }
-
+    /// Perform 'sort' on field `bp_seq:BpSequence` (sorts each measurement vector separatly).
     fn sort_seq(&mut self) {
         self.bp_seq.sort_seq();
     }
-    /// Perform analysis based on `bp_seq` (`BpSequence`) to create `AnalyzeDay` obj
+    /// Perform analysis based on `bp_seq:BpSequence` to create `AnalyzeDay` obj
     pub fn perform_analysis(&mut self) {
         self.sort_seq();
         self.analysis = AnalyzeDayBuilder::build(&self.bp_seq);
         self.set_completed();
     }
-    /// Add `BpType` array from `Meas2` obj to internal `Vec<BpType>` (`vec_bp`).
-    ///
+    /// Add singe measurement array `BpType` from `Meas2` obj to internal `bp_seq:BpSequence`.
     fn add_meas2(&mut self, m2: &Meas2) {
         self.check_can_edit();
 
+        // get measurement
         let meas = m2.get_bp();
-        let ref_seq = self.bp_seq.get_ref_seq_mut();
-        for idx in 0..3 {
-            ref_seq[idx].push(meas[idx]);
+        // get mut ref to underlying `VecMeas2dType` obj of `bp_seq:BpSequence`
+        let ref_seq = self.get_ref_mut();
+
+        for idx_m in 0..3 {
+            self.bp_seq.get_ref_meas_mut(idx_m).push(meas[idx_m]);
         }
     }
     /// Returns ref to internal `Vec<BpType>` (`vec_bp`)
