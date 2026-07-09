@@ -1136,8 +1136,8 @@ impl FileHandler {
             "Unable to get `metadata` of file: `{:?}`",
             path_file
         ))?;
-                return Ok(FileState::Exists(metadata.len()));
-            }
+        return Ok(FileState::Exists(metadata.len()));
+    }
     /// Will try to open the file.
     ///
     /// | `FileOpenMode` | Action    |
@@ -1273,8 +1273,8 @@ impl FileHandlerCsv {
                 path_str,
                 Self::CSV_HEADER,
                 &line[..]
-                );
-            }
+            );
+        }
         Ok(())
     }
 
@@ -1362,9 +1362,14 @@ enum FileState {
 // ################################################################
 fn main() {
     let cli = Cli::parse();
-    println!("CLI: {:?}\n", &cli);
+    // println!("CLI: {:?}\n", &cli);
 
-    worker_init_csv();
+    let file_str = format!("{}.csv", get_date_ym());
+    let dir_str = "data";
+    let csv_worker = FileHandlerCsv::new(&dir_str, &file_str);
+
+    csv_worker.check_file().unwrap();
+    // worker_init_csv();
 
     match cli.add {
         Some(bp) => worker_bp_add(&bp),
@@ -1372,7 +1377,8 @@ fn main() {
     }
 
     if cli.rebuild || cli.status || cli.output {
-        let csv_collection = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
+        // let csv_collection = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
+        let csv_collection = csv_worker.get_csv_content().unwrap();
 
         if cli.rebuild {
             worker_csv_rebuild(&csv_collection);
