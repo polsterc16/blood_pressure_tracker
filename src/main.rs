@@ -26,7 +26,7 @@ use std::path::PathBuf;
 
 // ################################################################
 
-const TEMP_HEADER: &str = "date,time,sys,dia,pul";
+// const TEMP_HEADER: &str = "date,time,sys,dia,pul";
 const SECS_IN_DAYS_F32: f32 = 86400_f32;
 
 // ################################################################
@@ -1323,12 +1323,12 @@ impl FileHandlerCsv {
 // ################################################################
 // ################################################################
 
-#[derive(Debug, PartialEq)]
-enum CsvOpenMode {
-    Read,
-    WriteReset,
-    WriteAppend,
-}
+// #[derive(Debug, PartialEq)]
+// enum CsvOpenMode {
+//     Read,
+//     WriteReset,
+//     WriteAppend,
+// }
 
 /// | `FileOpenMode` | Meaning   |
 /// | -------------- | --------- |
@@ -1374,7 +1374,7 @@ fn main() {
     // worker_init_csv();
 
     match cli.add {
-        Some(bp) => worker_bp_add(&bp),
+        Some(bp) => worker_bp_add(&csv_worker, &bp),
         _ => (),
     }
 
@@ -1383,7 +1383,7 @@ fn main() {
         let csv_collection = csv_worker.get_csv_content().unwrap();
 
         if cli.rebuild {
-            worker_csv_rebuild(&csv_collection);
+            worker_csv_rebuild(&csv_worker, &csv_collection);
         }
         if cli.output {
             worker_output(&csv_collection);
@@ -1463,26 +1463,18 @@ fn worker_output(csv_collection: &CollectionCsv) {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_collection: &CollectionCsv) {
-    let path_string = get_file_path_string();
+fn worker_csv_rebuild(csv_worker: &FileHandlerCsv, csv_collection: &CollectionCsv) {
     // Open CSV File and reset content
-    let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteReset);
+    let fh_csv = csv_worker.file_open(&FileOpenMode::Write).unwrap();
 
-    // println!("Sorted entries:");
-    // for entry in &csv_entries {
-    for (index, entry) in csv_collection.get_ref().iter().enumerate() {
-        // let csv_line = entry.get_csv_entry_string();
-        // println!("[{}] {:?}", index, csv_line);
-
-        writeln!(&fh_csv, "{}", entry).expect(&format!(
-            "Could not write to File '{path_string}': Entry [{index}] '{entry}'."
-        ));
+    for entry in csv_collection.get_ref() {
+        writeln!(&fh_csv, "{}", entry)
+            .context("Could not write to file")
+            .unwrap();
     }
 
     // Save changes to disk
-    fh_csv
-        .sync_all()
-        .expect(&format!("Unable to save File '{path_string}'."));
+    fh_csv.sync_all().context("Unable to save File .").unwrap();
 }
 
 fn worker_csv_status(csv_collection: &CollectionCsv) {
@@ -1506,27 +1498,23 @@ fn worker_csv_status(csv_collection: &CollectionCsv) {
     }
 }
 
-fn worker_bp_add(bp: &Vec<f32>) {
+fn worker_bp_add(csv_worker: &FileHandlerCsv, bp: &Vec<f32>) {
     let sys = bp[0];
     let dia = bp[1];
     let pul = bp[2];
 
     let measurement = MeasCsv::new(sys, dia, pul);
 
-    let path_string = get_file_path_string();
-
     // Open CSV file in 'append' mode
-    let fh_csv = open_csv_file(&path_string, CsvOpenMode::WriteAppend);
+    let fh_csv = csv_worker.file_open(&FileOpenMode::Append).unwrap();
 
     // Append entry to CSV file
-    if let Err(e) = writeln!(&fh_csv, "{}", measurement) {
-        eprintln!("Couldn't write to file: {}", e);
-    }
+    writeln!(&fh_csv, "{}", measurement)
+        .context("Could not write to file")
+        .unwrap();
 
     // Save changes to disk
-    fh_csv
-        .sync_all()
-        .expect(&format!("Unable to save File '{path_string}'."));
+    fh_csv.sync_all().context("Unable to save File .").unwrap();
 }
 
 // fn worker_init_csv() {
@@ -1543,50 +1531,50 @@ fn worker_bp_add(bp: &Vec<f32>) {
 
 // ################################################################
 
-fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
-    let path_file = Path::new(path_str);
-
-    let fh_csv: File;
-    match mode {
-        CsvOpenMode::Read => {
-            fh_csv = OpenOptions::new()
-                .read(true)
-                .open(path_file)
-                .expect(&format!(
-                    "Unable to open File '{}' in {:?}.",
-                    path_str, mode
-                ));
-        }
-        CsvOpenMode::WriteReset => {
-            fh_csv = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(path_file)
-                .expect(&format!(
-                    "Unable to open File '{}' in {:?}.",
-                    path_str, mode
-                ));
-
-            // Write CSV header line
-            writeln!(&fh_csv, "{}", TEMP_HEADER).expect(&format!(
-                "Could not write to File '{}' in {:?}.",
-                path_str, mode
-            ));
-        }
-        CsvOpenMode::WriteAppend => {
-            fh_csv = OpenOptions::new()
-                .write(true)
-                .append(true)
-                .open(path_file)
-                .expect(&format!(
-                    "Unable to open File '{}' in {:?}.",
-                    path_str, mode
-                ));
-        }
-    }
-    fh_csv
-}
+// fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
+//     let path_file = Path::new(path_str);
+//
+//     let fh_csv: File;
+//     match mode {
+//         CsvOpenMode::Read => {
+//             fh_csv = OpenOptions::new()
+//                 .read(true)
+//                 .open(path_file)
+//                 .expect(&format!(
+//                     "Unable to open File '{}' in {:?}.",
+//                     path_str, mode
+//                 ));
+//         }
+//         CsvOpenMode::WriteReset => {
+//             fh_csv = OpenOptions::new()
+//                 .write(true)
+//                 .create(true)
+//                 .truncate(true)
+//                 .open(path_file)
+//                 .expect(&format!(
+//                     "Unable to open File '{}' in {:?}.",
+//                     path_str, mode
+//                 ));
+//
+//             // Write CSV header line
+//             writeln!(&fh_csv, "{}", TEMP_HEADER).expect(&format!(
+//                 "Could not write to File '{}' in {:?}.",
+//                 path_str, mode
+//             ));
+//         }
+//         CsvOpenMode::WriteAppend => {
+//             fh_csv = OpenOptions::new()
+//                 .write(true)
+//                 .append(true)
+//                 .open(path_file)
+//                 .expect(&format!(
+//                     "Unable to open File '{}' in {:?}.",
+//                     path_str, mode
+//                 ));
+//         }
+//     }
+//     fh_csv
+// }
 
 // fn read_csv_content() -> Result<CollectionCsv, Box<dyn std::error::Error>> {
 //     let path_string = get_file_path_string();
@@ -1707,9 +1695,9 @@ fn get_time() -> String {
     Local::now().format("%H:%M:%S").to_string()
 }
 
-fn get_file_path_string() -> String {
-    format!("./data/{}.csv", get_date_ym())
-}
-fn get_dir_path_string() -> String {
-    format!("./data")
-}
+// fn get_file_path_string() -> String {
+//     format!("./data/{}.csv", get_date_ym())
+// }
+// fn get_dir_path_string() -> String {
+//     format!("./data")
+// }
