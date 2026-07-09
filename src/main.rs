@@ -83,7 +83,7 @@ impl F32Vec2d {
     fn new_xy(size_x: usize, len_y: usize) -> Self {
         // create sequence (`VecMeas2dType`) for `size_x` measurements
         let mut ret_item = Self::new_x(size_x);
-        let mut ref_seq_vec = ret_item.get_ref_seq_vec_mut();
+        let ref_seq_vec = ret_item.get_ref_seq_vec_mut();
 
         // add `size_x` measurement `vec`s (`VecMeasType`) with capacity `len_y`
         for _ in 0..size_x {
@@ -556,8 +556,6 @@ impl CollectionDay {
 
         // get measurement
         let meas = m2.get_bp();
-        // get mut ref to underlying `VecMeas2dType` obj of `bp_seq:BpSequence`
-        let ref_seq = self.get_ref_mut();
 
         for idx_m in 0..3 {
             self.bp_seq.get_ref_meas_vec_mut(idx_m).push(meas[idx_m]);
@@ -771,8 +769,6 @@ impl AnalyzeDayBuilder {
     //     return a_measurement;
     // }
     fn calc_min_max(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
-        let bp_vec2d = bp_seq.get_ref_seq_vec();
-
         for idx_m in 0..bp_seq.get_meas_num() {
             // get sample vector for this measurement
             let vec_x = bp_seq.get_ref_meas_vec(idx_m);
@@ -1080,7 +1076,7 @@ impl FileHandler {
         let p_dir = Path::new(&directory).to_owned();
         let p_file = Path::new(&directory).join(&file).to_owned();
 
-        let mut ret_obj = Self {
+        let ret_obj = Self {
             path_dir: p_dir,
             path_file: p_file,
         };
@@ -1177,7 +1173,7 @@ impl FileHandlerCsv {
     const CSV_HEADER: &str = "date,time,sys,dia,pul";
 
     pub fn new(directory: &str, file: &str) -> Self {
-        let mut ret_obj = Self {
+        let ret_obj = Self {
             fh_core: FileHandler::new(directory, file),
         };
 
@@ -1201,8 +1197,6 @@ impl FileHandlerCsv {
     ///   - Major error: File is empty!
     ///   - File has missing/wrong csv header
     pub fn check_file(&self) -> anyhow::Result<()> {
-        let path_dir_str = self.fh_core.get_path_dir_str();
-
         self.fh_core.check_directory()?;
 
         let f_state = self.fh_core.check_file_exists()?;
@@ -1527,17 +1521,17 @@ fn worker_bp_add(bp: &Vec<f32>) {
         .expect(&format!("Unable to save File '{path_string}'."));
 }
 
-fn worker_init_csv() {
-    let path_dir_string = get_dir_path_string();
-    let path_file_string = get_file_path_string();
-
-    check_path(&path_dir_string).expect(&format!(
-        "Unable to perform 'Check of Directory {path_dir_string}'."
-    ));
-    check_file(&path_file_string).expect(&format!(
-        "Unable to perform 'Check of work File {path_file_string}'."
-    ));
-}
+// fn worker_init_csv() {
+//     let path_dir_string = get_dir_path_string();
+//     let path_file_string = get_file_path_string();
+//
+//     check_path(&path_dir_string).expect(&format!(
+//         "Unable to perform 'Check of Directory {path_dir_string}'."
+//     ));
+//     check_file(&path_file_string).expect(&format!(
+//         "Unable to perform 'Check of work File {path_file_string}'."
+//     ));
+// }
 
 // ################################################################
 
@@ -1586,104 +1580,104 @@ fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
     fh_csv
 }
 
-fn read_csv_content() -> Result<CollectionCsv, Box<dyn std::error::Error>> {
-    let path_string = get_file_path_string();
+// fn read_csv_content() -> Result<CollectionCsv, Box<dyn std::error::Error>> {
+//     let path_string = get_file_path_string();
+//
+//     let fh_csv = open_csv_file(&path_string, CsvOpenMode::Read);
+//     let mut rdr = csv::ReaderBuilder::new()
+//         .delimiter(b',')
+//         .from_reader(fh_csv);
+//
+//     // let records_iter = rdr.deserialize();
+//
+//     let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
+//     // let mut ret: Vec<MeasCsv> = Vec::with_capacity(records.len());
+//     let mut coll = CollectionCsv::new_with_capacity(records.len());
+//
+//     for result in records {
+//         let entry: MeasCsv = result?;
+//         // println!("{:?}", entry);
+//         // ret.push(entry);
+//         coll.add_csv_consume(entry);
+//     }
+//
+//     // // Sort vector of Measurement by date, time
+//     // ret.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
+//     coll.sort();
+//
+//     Ok(coll)
+// }
 
-    let fh_csv = open_csv_file(&path_string, CsvOpenMode::Read);
-    let mut rdr = csv::ReaderBuilder::new()
-        .delimiter(b',')
-        .from_reader(fh_csv);
+// fn check_file(path_file_str: &str) -> Result<(), std::io::Error> {
+//     // let path_string = get_file_path_string();
+//     let path_file = Path::new(path_file_str);
+//     let fh: File;
+//
+//     if path_file.exists() {
+//         let file_meta = fs::metadata(path_file).expect("unable to read metadata");
+//         // println!("metadata len: {:?}", file_meta.len());
+//
+//         if file_meta.len() > 0 {
+//             let f_read = File::open(path_file)?;
+//             let reader = BufReader::new(f_read);
+//
+//             let mut lines = reader.lines();
+//             let line = lines
+//                 .next()
+//                 .expect("Unable to read first Line of File")
+//                 .expect("Unable to read first Line of File");
+//
+//             if TEMP_HEADER == &line[..] {
+//                 return Ok(());
+//             } else {
+//                 panic!(
+//                     "File '{}' has content, but is missing csv header!",
+//                     path_file_str
+//                 );
+//             }
+//         }
+//         log_message(&format!(
+//             "Empty File '{}' missing csv header.",
+//             path_file_str
+//         ));
+//
+//         fh = File::create(path_file)?;
+//     } else {
+//         log_warning(&format!("File '{}' missing.", path_file_str));
+//
+//         fh = File::create_new(path_file)?;
+//         log_message(&format!("Empty File '{}' created.", path_file_str));
+//     }
+//
+//     if let Err(e) = writeln!(&fh, "{}", TEMP_HEADER) {
+//         eprintln!("Could not write to File: {}", e);
+//     }
+//
+//     fh.sync_all()?;
+//     log_message(&format!("Csv header added to File '{}'.", path_file_str));
+//
+//     Ok(())
+// }
 
-    // let records_iter = rdr.deserialize();
-
-    let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
-    // let mut ret: Vec<MeasCsv> = Vec::with_capacity(records.len());
-    let mut coll = CollectionCsv::new_with_capacity(records.len());
-
-    for result in records {
-        let entry: MeasCsv = result?;
-        // println!("{:?}", entry);
-        // ret.push(entry);
-        coll.add_csv_consume(entry);
-    }
-
-    // // Sort vector of Measurement by date, time
-    // ret.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
-    coll.sort();
-
-    Ok(coll)
-}
-
-fn check_file(path_file_str: &str) -> Result<(), std::io::Error> {
-    // let path_string = get_file_path_string();
-    let path_file = Path::new(path_file_str);
-    let fh: File;
-
-    if path_file.exists() {
-        let file_meta = fs::metadata(path_file).expect("unable to read metadata");
-        // println!("metadata len: {:?}", file_meta.len());
-
-        if file_meta.len() > 0 {
-            let f_read = File::open(path_file)?;
-            let reader = BufReader::new(f_read);
-
-            let mut lines = reader.lines();
-            let line = lines
-                .next()
-                .expect("Unable to read first Line of File")
-                .expect("Unable to read first Line of File");
-
-            if TEMP_HEADER == &line[..] {
-                return Ok(());
-            } else {
-                panic!(
-                    "File '{}' has content, but is missing csv header!",
-                    path_file_str
-                );
-            }
-        }
-        log_message(&format!(
-            "Empty File '{}' missing csv header.",
-            path_file_str
-        ));
-
-        fh = File::create(path_file)?;
-    } else {
-        log_warning(&format!("File '{}' missing.", path_file_str));
-
-        fh = File::create_new(path_file)?;
-        log_message(&format!("Empty File '{}' created.", path_file_str));
-    }
-
-    if let Err(e) = writeln!(&fh, "{}", TEMP_HEADER) {
-        eprintln!("Could not write to File: {}", e);
-    }
-
-    fh.sync_all()?;
-    log_message(&format!("Csv header added to File '{}'.", path_file_str));
-
-    Ok(())
-}
-
-fn check_path(path_dir_str: &str) -> std::io::Result<()> {
-    let path_dir = Path::new(path_dir_str);
-
-    if path_dir.exists() {
-        return Ok(());
-    }
-    log_warning(&format!("Directory '{}' missing.", path_dir_str));
-
-    match fs::create_dir(path_dir) {
-        Ok(_) => {
-            log_message(&format!("Directory '{}' created.", path_dir_str));
-            Ok(())
-        }
-        Err(e) => {
-            log_error(&format!("Unable to create Directory '{}'.", path_dir_str));
-            Err(e)
-        }
-    }
-}
+// fn check_path(path_dir_str: &str) -> std::io::Result<()> {
+//     let path_dir = Path::new(path_dir_str);
+//
+//     if path_dir.exists() {
+//         return Ok(());
+//     }
+//     log_warning(&format!("Directory '{}' missing.", path_dir_str));
+//
+//     match fs::create_dir(path_dir) {
+//         Ok(_) => {
+//             log_message(&format!("Directory '{}' created.", path_dir_str));
+//             Ok(())
+//         }
+//         Err(e) => {
+//             log_error(&format!("Unable to create Directory '{}'.", path_dir_str));
+//             Err(e)
+//         }
+//     }
+// }
 
 fn log_message(msg: &str) {
     println!("[MESSAGE]\t{msg}");
