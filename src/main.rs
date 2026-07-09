@@ -1074,8 +1074,6 @@ impl DateTimeSimple {
 struct FileHandler {
     path_dir: PathBuf,
     path_file: PathBuf,
-    #[serde(skip)]
-    open_fh: Option<File>,
 }
 impl FileHandler {
     pub fn new(directory: &str, file: &str) -> Self {
@@ -1085,7 +1083,6 @@ impl FileHandler {
         let mut ret_obj = Self {
             path_dir: p_dir,
             path_file: p_file,
-            open_fh: None,
         };
         ret_obj
     }
@@ -1102,23 +1099,22 @@ impl FileHandler {
         self.get_path_file().display().to_string()
     }
     /// Checks if directory exists and tries to create it, if not.
-    pub fn check_directory(&self) -> Result<(), std::io::Error> {
+    ///
+    /// # anyhow::Errors
+    /// - Unable to create directory
+    pub fn check_directory(&self) -> anyhow::Result<()> {
         let path_dir = self.get_path_dir();
+
         if path_dir.exists() {
             return Ok(());
         }
-        log_warning(&format!("Directory '{:?}' missing.", path_dir,));
+        log_warning(&format!("Directory missing: `{:?}`", path_dir,));
 
-        match fs::create_dir(path_dir) {
-            Ok(_) => {
-                log_message(&format!("Directory '{:?}' created.", path_dir));
-                Ok(())
-            }
-            Err(e) => {
-                log_error(&format!("Unable to create directory '{:?}'.", path_dir));
-                Err(e)
-            }
-        }
+        fs::create_dir(path_dir)
+            .context(format!("Unable to create directory: `{:?}`", path_dir))?;
+
+        log_message(&format!("Directory created: `{:?}`", path_dir));
+        return Ok(());
     }
     /// Checks if file exists.
     ///
@@ -1126,22 +1122,22 @@ impl FileHandler {
     /// | ------------------------ | --------------------------------------- |
     /// | File does not exist      | `Ok( FileState::Missing )`              |
     /// | File exists              | `Ok( FileState::Exists(filesize:u64) )` |
-    /// | Missing file permissions | `std::io::Error`                        |
-    pub fn check_file_exists(&self) -> Result<FileState, std::io::Error> {
+    /// | Missing file permissions | `anyhow::Error`                         |
+    ///
+    /// # anyhow::Errors
+    /// - Unable to get `metadata` of file
+    pub fn check_file_exists(&self) -> anyhow::Result<FileState> {
         let path_file = self.get_path_file();
 
         if !path_file.exists() {
             return Ok(FileState::Missing);
         }
-        match fs::metadata(path_file) {
-            Ok(metadata) => {
+        let metadata = fs::metadata(path_file).context(format!(
+            "Unable to get `metadata` of file: `{:?}`",
+            path_file
+        ))?;
                 return Ok(FileState::Exists(metadata.len()));
             }
-            Err(e) => {
-                return Err(e);
-            }
-        }
-    }
     /// Will try to open the file.
     ///
     /// | `FileOpenMode` | Action    |
@@ -1149,7 +1145,10 @@ impl FileHandler {
     /// | `Read`         | Open file in Read mode  |
     /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
     /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
-    pub fn file_open(&mut self, mode: &FileOpenMode) -> std::io::Result<&Option<File>> {
+    ///
+    /// # anyhow::Errors
+    /// - Unable to open file (mode)
+    pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
         let path_file = self.get_path_file();
 
         let fh = match mode {
@@ -1160,46 +1159,26 @@ impl FileHandler {
                 .truncate(true)
                 .open(path_file),
             FileOpenMode::Append => OpenOptions::new().write(true).append(true).open(path_file),
-        };
-        match fh {
-            Err(e) => return Err(e),
-            Ok(file) => {
-                self.open_fh = Some(file);
-                return Ok(self.get_file());
-            }
         }
-    }
-    pub fn file_close(&mut self, sync_all: bool) -> std::io::Result<()> {
-        match &self.open_fh {
-            None => return Ok(()),
-            Some(fh) => {
-                if sync_all {
-                    fh.sync_all()?;
-                }
-                // Drop file
-                self.open_fh = None;
-                return Ok(());
-            }
-        }
-    }
-    pub fn file_is_open(&self) -> bool {
-        self.open_fh.is_some()
-    }
-    pub fn get_file(&self) -> &Option<File> {
-        &self.open_fh
+        .context(format!(
+            "Unable to open file (`{:?}`): `{:?}`",
+            mode, path_file,
+        ))?;
+
+        return Ok(fh);
     }
 }
 
 #[derive(Serialize, Deserialize, DebugPretty)]
 struct FileHandlerCsv {
     fh_core: FileHandler,
-    default_content: String,
 }
 impl FileHandlerCsv {
+    const CSV_HEADER: &str = "date,time,sys,dia,pul";
+
     pub fn new(directory: &str, file: &str) -> Self {
         let mut ret_obj = Self {
             fh_core: FileHandler::new(directory, file),
-            default_content: String::from(CSV_HEADER),
         };
 
         ret_obj
@@ -1208,110 +1187,134 @@ impl FileHandlerCsv {
     /// - If missing: create with default content
     /// - If exists: check if header valid
     ///
-    /// # Panic
-    /// Panics if
-    /// - Unable to create directory
-    pub fn check_file_try(&mut self) -> std::io::Result<()> {
+    /// # anyhow::Errors
+    /// - `self.fh_core.check_directory`
+    ///   - Unable to create directory
+    /// - `self.fh_core.check_file_exists`
+    ///   - Unable to get `metadata` of file
+    /// - `self.create_init_file`
+    ///   - Unable to open file (mode)
+    ///   - Unable to write to file
+    /// - `self.check_file_header`
+    ///   - Unable to open file (mode)
+    ///   - IO error while reading first line
+    ///   - Major error: File is empty!
+    ///   - File has missing/wrong csv header
+    pub fn check_file(&self) -> anyhow::Result<()> {
         let path_dir_str = self.fh_core.get_path_dir_str();
-        match self.fh_core.check_directory() {
-            Ok(_) => (),
-            Err(e) => panic!(
-                "Unable to create directory '{:?}'. \n[{:?}]",
-                path_dir_str, e
-            ),
-        }
-        match self.fh_core.check_file_exists().unwrap() {
+
+        self.fh_core.check_directory()?;
+
+        let f_state = self.fh_core.check_file_exists()?;
+        match f_state {
             FileState::Missing => {
-                self.create_init_file_try()?;
+                self.create_init_file()?;
                 Ok(())
             }
             FileState::Exists(file_size) => {
                 if file_size == 0 {
-                    self.create_init_file_try()?;
+                    self.create_init_file()?;
                     Ok(())
                 } else {
-                    self.check_file_header_try()?;
+                    self.check_file_header()?;
                     Ok(())
                 }
             }
         }
     }
 
-    fn create_init_file(&mut self) {
-        let path_str = self.fh_core.get_path_file_str();
-
-        match self.create_init_file_try() {
-            Ok(_) => (),
-            Err(e) => {
-                panic!("Unable to create_init_file '{:?}'. \n[{:?}]", path_str, e);
-            }
-        }
-    }
-    fn create_init_file_try(&mut self) -> std::io::Result<()> {
+    /// Create/initialize the file with default content
+    ///
+    /// # anyhow::Errors
+    /// - Unable to write to file
+    /// - `self.file_open`
+    ///   - Unable to open file (mode)
+    fn create_init_file(&self) -> anyhow::Result<()> {
         let mode = FileOpenMode::Write;
-        let default_content = self.default_content.clone();
+        let path_str = self.fh_core.get_path_file_str();
+        // let default_content = self.default_content.clone();
 
-        let mut fh: &File = match self.file_open_try(&mode) {
-            Err(e) => return Err(e),
-            Ok(f_option) => match f_option {
-                Some(f_some) => f_some,
-                None => panic!("Major error!"),
-            },
-        };
+        let mut fh = self.file_open(&mode)?;
 
         // Write CSV header line
-        match writeln!(fh, "{}", default_content) {
-            Ok(_) => Ok(()),
-            Err(e) => return Err(e),
-        }
+        writeln!(fh, "{}", Self::CSV_HEADER)
+            .context(format!("Unable to write to file: `{:?}`", path_str))?;
+
+        return Ok(());
     }
 
-    fn check_file_header_try(&self) -> std::io::Result<()> {
-        todo!();
+    /// Check the header (first line) of file
+    ///
+    /// # anyhow::Errors
+    /// - IO error while reading first line
+    /// - Major error: File is empty!
+    /// - File has missing/wrong csv header
+    /// - `self.file_open`
+    ///   - Unable to open file (mode)
+    fn check_file_header(&self) -> anyhow::Result<()> {
+        let mode = FileOpenMode::Read;
+        let path_str = self.fh_core.get_path_file_str();
+
+        let f_read = self.file_open(&mode)?;
+
+        let reader = BufReader::new(f_read);
+        let mut lines = reader.lines();
+
+        // Get first line
+        let res = match lines.next() {
+            Some(x) => x,
+            None => bail!("Major error: File is empty!"),
+        };
+        let line = res.context("IO error while reading first line")?;
+
+        if !(Self::CSV_HEADER == &line[..]) {
+            bail!(
+                "File has missing/wrong csv header: `{}`\nT: [{}]\nF: [{}]",
+                path_str,
+                Self::CSV_HEADER,
+                &line[..]
+                );
+            }
         Ok(())
     }
 
-    fn file_open(&mut self, mode: &FileOpenMode) -> &File {
-        let path_str = self.fh_core.get_path_file_str();
+    /// Will try to open the file.
+    ///
+    /// | `FileOpenMode` | Action    |
+    /// | -------------- | --------- |
+    /// | `Read`         | Open file in Read mode  |
+    /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
+    /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
+    ///
+    /// # anyhow::Errors
+    /// - Unable to open file (mode)
+    pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
+        self.fh_core.file_open(mode)
+    }
 
-        let fh = match self.file_open_try(mode) {
-            Err(e) => {
-                panic!(
-                    "Unable to file_open_try '{:?}' in {:?}. \n[{:?}]",
-                    path_str, mode, e
-                );
-            }
-            Ok(f) => match f {
-                Some(some_f) => some_f,
-                None => panic!("Major error!"),
-            },
-        };
-        fh
-    }
-    fn file_open_try(&mut self, mode: &FileOpenMode) -> std::io::Result<&Option<File>> {
-        self.fh_core.file_open(&mode)
-    }
-    pub fn file_close(&mut self, sync_all: bool) {
-        let path_str = self.fh_core.get_path_file_str();
+    pub fn get_csv_content(&self) -> anyhow::Result<CollectionCsv> {
+        let fh_csv = self.file_open(&FileOpenMode::Read)?;
 
-        match self.fh_core.file_close(sync_all) {
-            Ok(_) => (),
-            Err(e) => panic!(
-                "Unable to close file '{:?}' (sync_all:{:?}). \n[{:?}]",
-                path_str, sync_all, e
-            ),
-        };
-    }
-    pub fn file_is_open(&self) -> bool {
-        self.fh_core.file_is_open()
-    }
-    pub fn get_file(&self) -> &File {
-        let path_str = self.fh_core.get_path_file_str();
+        // create CSV reader
+        let mut rdr = csv::ReaderBuilder::new()
+            .delimiter(b',')
+            .from_reader(fh_csv);
 
-        match self.fh_core.get_file() {
-            Some(f) => f,
-            None => panic!("File '{:?}' not open!", path_str),
+        // deserialize reader into `MeasCsv` struct
+        let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
+
+        let mut ret_coll = CollectionCsv::new_with_capacity(records.len());
+
+        // try to insert `MeasCsv` objs into `CollectionCsv `
+        for result in records {
+            let entry: MeasCsv = result.context("Unable to parse entry of CSV file.")?;
+            ret_coll.add_csv_consume(entry);
         }
+
+        // Sort collection vector by fields date, time
+        ret_coll.sort();
+
+        return Ok(ret_coll);
     }
 }
 
@@ -1334,8 +1337,10 @@ enum CsvOpenMode {
 enum FileOpenMode {
     /// Open file in Read mode
     Read,
+
     ///Open (or create) file in Write mode: Overwrite and truncate previous content
     Write,
+
     /// Open (or create) file in Write mode: Append to previous content
     Append,
 }
@@ -1346,7 +1351,10 @@ enum FileOpenMode {
 /// | `Exists(u64)` | File exists and is `u64` bytes long   |
 #[derive(Debug, PartialEq)]
 enum FileState {
+    /// File does not exist
     Missing,
+
+    /// File exists and is `u64` bytes long
     Exists(u64),
 }
 
