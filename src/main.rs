@@ -1226,13 +1226,10 @@ impl FileHandlerCsv {
     fn create_init_file(&self) -> anyhow::Result<()> {
         let mode = FileOpenMode::Write;
         let path_str = self.fh_core.get_path_file_str();
-        // let default_content = self.default_content.clone();
 
-        let mut fh = self.file_open(&mode)?;
-
-        // Write CSV header line
-        writeln!(fh, "{}", Self::CSV_HEADER)
-            .context(format!("Unable to write to file: `{:?}`", path_str))?;
+        let fh = self.file_open(&mode)?;
+        fh.sync_all()
+            .context(format!("Unable to save file `{}`.", path_str))?;
 
         return Ok(());
     }
@@ -1282,8 +1279,19 @@ impl FileHandlerCsv {
     ///
     /// # anyhow::Errors
     /// - Unable to open file (mode)
+    /// - Could not write `CSV_HEADER` to file
     pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
-        self.fh_core.file_open(mode)
+        let fh = self.fh_core.file_open(mode)?;
+        match mode {
+            _ => (),
+            FileOpenMode::Write => {
+                // Write CSV header line
+                writeln!(&fh, "{}", Self::CSV_HEADER)
+                    .context("Could not write `CSV_HEADER` to file.")
+                    .unwrap();
+            }
+        };
+        return Ok(fh);
     }
 
     pub fn get_csv_content(&self) -> anyhow::Result<CollectionCsv> {
