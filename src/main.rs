@@ -24,7 +24,7 @@ use std::path::PathBuf;
 
 // ################################################################
 
-const CSV_HEADER: &str = "date,time,sys,dia,pul";
+const TEMP_HEADER: &str = "date,time,sys,dia,pul";
 const SECS_IN_DAYS_F32: f32 = 86400_f32;
 
 // ################################################################
@@ -1551,7 +1551,7 @@ fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
                 ));
 
             // Write CSV header line
-            writeln!(&fh_csv, "{}", CSV_HEADER).expect(&format!(
+            writeln!(&fh_csv, "{}", TEMP_HEADER).expect(&format!(
                 "Could not write to File '{}' in {:?}.",
                 path_str, mode
             ));
@@ -1617,7 +1617,7 @@ fn check_file(path_file_str: &str) -> Result<(), std::io::Error> {
                 .expect("Unable to read first Line of File")
                 .expect("Unable to read first Line of File");
 
-            if CSV_HEADER == &line[..] {
+            if TEMP_HEADER == &line[..] {
                 return Ok(());
             } else {
                 panic!(
@@ -1639,7 +1639,7 @@ fn check_file(path_file_str: &str) -> Result<(), std::io::Error> {
         log_message(&format!("Empty File '{}' created.", path_file_str));
     }
 
-    if let Err(e) = writeln!(&fh, "{}", CSV_HEADER) {
+    if let Err(e) = writeln!(&fh, "{}", TEMP_HEADER) {
         eprintln!("Could not write to File: {}", e);
     }
 
