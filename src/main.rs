@@ -68,19 +68,19 @@ type VecMeas2dType = Vec<VecMeasType>;
 
 /// Sequence (`VecMeas2dType:Vec<VecMeasType>`) of measurements (`VecMeasType:Vec<f32>`).
 #[derive(Debug, Serialize, Deserialize)]
-struct F32Vec2d(VecMeas2dType);
+pub struct F32Vec2d(VecMeas2dType);
 impl F32Vec2d {
     /// Create new sequence (`VecMeas2dType`).
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self(Vec::<VecMeasType>::new())
     }
     /// Create new sequence (`VecMeas2dType`) for `size_x` measurements (`VecMeasType`).
-    fn new_x(size_x: usize) -> Self {
+    pub fn new_x(size_x: usize) -> Self {
         Self(Vec::<VecMeasType>::with_capacity(size_x))
     }
     /// Create new sequence (`VecMeas2dType`) for `size_x` measurements (`VecMeasType`),
     /// which each have reserved capacity `len_y`.
-    fn new_xy(size_x: usize, len_y: usize) -> Self {
+    pub fn new_xy(size_x: usize, len_y: usize) -> Self {
         // create sequence (`VecMeas2dType`) for `size_x` measurements
         let mut ret_item = Self::new_x(size_x);
         let ref_seq_vec = ret_item.get_ref_seq_vec_mut();
@@ -92,41 +92,41 @@ impl F32Vec2d {
         return ret_item;
     }
     /// Get mut ref to internal sequence of measurements (`VecMeas2dType`)
-    fn get_ref_seq_vec_mut(&mut self) -> &mut VecMeas2dType {
+    pub fn get_ref_seq_vec_mut(&mut self) -> &mut VecMeas2dType {
         &mut self.0
     }
     /// Get ref to internal sequence of measurements (`VecMeas2dType`)
-    fn get_ref_seq_vec(&self) -> &VecMeas2dType {
+    pub fn get_ref_seq_vec(&self) -> &VecMeas2dType {
         &self.0
     }
     /// Get mut ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
     /// # Panic
     /// Panics if `idx_m` not is in range of valid indexes.
-    fn get_ref_meas_vec_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
+    pub fn get_ref_meas_vec_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
         self.check_meas_idx_range_panic(idx_m);
         &mut self.0[idx_m]
     }
     /// Get ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
     /// # Panic
     /// Panics if `idx_m` not is in range of valid indexes.
-    fn get_ref_meas_vec(&self, idx_m: usize) -> &VecMeasType {
+    pub fn get_ref_meas_vec(&self, idx_m: usize) -> &VecMeasType {
         self.check_meas_idx_range_panic(idx_m);
         &self.0[idx_m]
     }
     /// Returns *number* of measurement vectors in sequence.
     #[inline]
-    fn get_meas_num(&self) -> usize {
+    pub fn get_meas_num(&self) -> usize {
         self.get_ref_seq_vec().len()
     }
     /// Returns *length* of measurement vectors in sequence.
     #[inline]
-    fn get_meas_vec_len(&self) -> usize {
+    pub fn get_meas_vec_len(&self) -> usize {
         self.get_ref_meas_vec(0).len()
     }
     /// Check if `idx_m` is in range of valid indexes for measurements in the sequence.
     /// ***
     /// See also [`check_meas_idx_range_panic`]
-    fn check_meas_idx_range(&self, idx_m: usize) -> bool {
+    pub fn check_meas_idx_range(&self, idx_m: usize) -> bool {
         let r = 0..self.get_meas_num();
         return r.contains(&idx_m);
     }
@@ -135,7 +135,7 @@ impl F32Vec2d {
     /// Panics if `idx_m` not is in range of valid indexes.
     /// ***
     /// See also [`check_meas_idx_range`]
-    fn check_meas_idx_range_panic(&self, idx_m: usize) {
+    pub fn check_meas_idx_range_panic(&self, idx_m: usize) {
         let r = 0..self.get_meas_num();
 
         if !r.contains(&idx_m) {
@@ -146,7 +146,7 @@ impl F32Vec2d {
     /// 2. Tries to shrink the capacity of all measurement `vec`s.
     /// # Panic
     /// Panics if measurement `vec`s are not of the same length.
-    fn validate_shrink(&mut self) {
+    pub fn validate_shrink(&mut self) {
         let (_, len) = self.get_dim_filled();
         if len.is_empty() {
             panic!("range is_empty ({len:?})!");
@@ -160,7 +160,7 @@ impl F32Vec2d {
         }
     }
     /// Sorts all measurement `vec`s individually.
-    fn sort_seq(&mut self) {
+    pub fn sort_seq(&mut self) {
         for idx_m in 0..self.get_meas_num() {
             self.get_ref_meas_vec_mut(idx_m).sort_by(f32::total_cmp);
         }
@@ -168,7 +168,7 @@ impl F32Vec2d {
     /// Get the vector capacity in both dimensions:
     /// 1. Capacity of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
     /// 2. Capacity range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
-    fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+    pub fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         let seq_vec = self.get_ref_seq_vec();
         let _min = seq_vec
             .iter()
@@ -181,7 +181,7 @@ impl F32Vec2d {
     /// Get the vector length in both dimensions:
     /// 1. Length of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
     /// 2. Length range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
-    fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+    pub fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         let seq_vec = self.get_ref_seq_vec();
         let _min = seq_vec
             .iter()
@@ -195,62 +195,62 @@ impl F32Vec2d {
 
 /// Adaptation of [`F32Vec2d`] for blood pressure measurements (sequence of 3 measurement vectors).
 #[derive(Debug, Serialize, Deserialize)]
-struct BpSequence(F32Vec2d);
+pub struct BpSequence(F32Vec2d);
 impl BpSequence {
-    fn new(len: usize) -> Self {
+    pub fn new(len: usize) -> Self {
         Self(F32Vec2d::new_xy(3, len))
     }
     /// Get mut ref to internal sequence of measurements (`VecMeas2dType`)
-    fn get_ref_seq_vec_mut(&mut self) -> &mut VecMeas2dType {
+    pub fn get_ref_seq_vec_mut(&mut self) -> &mut VecMeas2dType {
         self.0.get_ref_seq_vec_mut()
     }
     /// Get ref to internal sequence of measurements (`VecMeas2dType`)
-    fn get_ref_seq_vec(&self) -> &VecMeas2dType {
+    pub fn get_ref_seq_vec(&self) -> &VecMeas2dType {
         self.0.get_ref_seq_vec()
     }
     /// Get mut ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
     /// # Panic
     /// Panics if `idx_m` not is in range of valid indexes.
-    fn get_ref_meas_vec_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
+    pub fn get_ref_meas_vec_mut(&mut self, idx_m: usize) -> &mut VecMeasType {
         self.0.get_ref_meas_vec_mut(idx_m)
     }
     /// Get ref to internal measurement (`VecMeasType`) of sequence at index `idx_m`
     /// # Panic
     /// Panics if `idx_m` not is in range of valid indexes.
-    fn get_ref_meas_vec(&self, idx_m: usize) -> &VecMeasType {
+    pub fn get_ref_meas_vec(&self, idx_m: usize) -> &VecMeasType {
         self.0.get_ref_meas_vec(idx_m)
     }
     /// Returns *number* of measurement vectors in sequence.
     #[inline]
-    fn get_meas_num(&self) -> usize {
+    pub fn get_meas_num(&self) -> usize {
         self.0.get_meas_num()
     }
     /// Returns *length* of measurement vectors in sequence.
     #[inline]
-    fn get_meas_vec_len(&self) -> usize {
+    pub fn get_meas_vec_len(&self) -> usize {
         self.0.get_meas_vec_len()
     }
     /// 1. Performs check if all measurement `vec`s are of the same length.
     /// 2. Tries to shrink the capacity of all measurement `vec`s.
     /// # Panic
     /// Panics if measurement `vec`s are not of the same length.
-    fn validate_shrink(&mut self) {
+    pub fn validate_shrink(&mut self) {
         self.0.validate_shrink();
     }
     /// Sorts all measurement `vec`s individually.
-    fn sort_seq(&mut self) {
+    pub fn sort_seq(&mut self) {
         self.0.sort_seq();
     }
     /// Get the vector capacity in both dimensions:
     /// 1. Capacity of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
     /// 2. Capacity range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
-    fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+    pub fn get_dim_capacity(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         self.0.get_dim_capacity()
     }
     /// Get the vector length in both dimensions:
     /// 1. Length of the sequence (`VecMeas2dType:Vec<VecMeasType>`)
     /// 2. Length range (`min..=max`) of the measurements (`VecMeasType:Vec<f32>`)
-    fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
+    pub fn get_dim_filled(&self) -> (usize, std::ops::RangeInclusive<usize>) {
         self.0.get_dim_filled()
     }
 }
@@ -259,7 +259,7 @@ impl BpSequence {
 
 /// Struct for importing entries from CSV file
 #[derive(Debug, Deserialize, Clone)]
-struct MeasCsv {
+pub struct MeasCsv {
     date: String,
     time: String,
     sys: f32,
@@ -339,7 +339,7 @@ impl MeasCsv {
 
 /// Measurement-2 exists only as long as the ref MeasCsv
 #[derive(Debug)]
-struct Meas2 {
+pub struct Meas2 {
     bp_sample: BpSampleType,
     datetime: DateTime<Utc>,
     day_fine: f32,
@@ -413,7 +413,7 @@ impl Meas2 {
 }
 
 #[derive(Debug)]
-struct CollectionCsv {
+pub struct CollectionCsv {
     vec_csv: Vec<MeasCsv>,
 }
 impl CollectionCsv {
@@ -451,7 +451,7 @@ impl CollectionCsv {
 }
 
 #[derive(Debug)]
-struct CollectionMeas2 {
+pub struct CollectionMeas2 {
     // coll_csv: &'a CollectionCsv,
     vec_meas2: Vec<Meas2>,
     day_zero: DateTime<Utc>,
@@ -484,11 +484,11 @@ impl CollectionMeas2 {
         return ret_coll_m2;
     }
     /// Add (and consume) a `Meas2` object to vector field.
-    fn add_meas2_consume(&mut self, meas_2: Meas2) {
+    pub fn add_meas2_consume(&mut self, meas_2: Meas2) {
         self.vec_meas2.push(meas_2);
     }
     /// Get mut ref to vector field.
-    fn get_ref_mut(&mut self) -> &mut Vec<Meas2> {
+    pub fn get_ref_mut(&mut self) -> &mut Vec<Meas2> {
         &mut self.vec_meas2
     }
     /// Get ref to vector field.
@@ -506,7 +506,7 @@ impl CollectionMeas2 {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct CollectionDay {
+pub struct CollectionDay {
     day: f32,
     sec: i64,
     sample_len: usize,
@@ -542,7 +542,7 @@ impl CollectionDay {
         ret_cd
     }
     /// Perform 'sort' on field `bp_seq:BpSequence` (sorts each measurement vector separatly).
-    fn sort_seq(&mut self) {
+    pub fn sort_seq(&mut self) {
         self.bp_seq.sort_seq();
     }
     /// Perform analysis based on `bp_seq:BpSequence` to create `AnalyzeDay` obj
@@ -551,7 +551,7 @@ impl CollectionDay {
         self.set_completed();
     }
     /// Add singe measurement array `BpType` from `Meas2` obj to internal `bp_seq:BpSequence`.
-    fn add_meas2(&mut self, m2: &Meas2) {
+    pub fn add_meas2(&mut self, m2: &Meas2) {
         self.check_can_edit();
 
         // get measurement
@@ -607,7 +607,7 @@ impl CollectionDay {
     /// Check if all objs in `Vec<Meas2>` have the same `sec_coarse` field as `m2_first` obj
     /// # Panic
     /// Will panic, if any element in `vec_m2` has a different field `sec_coarse` to the provided `m2_first` obj
-    fn check_coarse_match(vec_m2: &Vec<Meas2>, m2_first: &Meas2) {
+    pub fn check_coarse_match(vec_m2: &Vec<Meas2>, m2_first: &Meas2) {
         let coarse_match = vec_m2
             .iter()
             .all(|x| x.get_sec_coarse() == m2_first.get_sec_coarse());
@@ -621,7 +621,7 @@ impl CollectionDay {
 }
 
 #[derive(Serialize, Deserialize, DebugPretty)]
-struct CollectionMonth {
+pub struct CollectionMonth {
     day_zero: DateTimeSimple,
     hash_map: CollDayHashType,
 }
@@ -722,7 +722,7 @@ impl CollectionMonth {
 }
 
 #[derive(Debug)]
-struct AnalyzeDayBuilder {}
+pub struct AnalyzeDayBuilder {}
 impl AnalyzeDayBuilder {
     pub fn build<'a>(bp_seq: &'a mut BpSequence) -> AnalyzeDay {
         let mut ret_item = AnalyzeDay([
@@ -768,7 +768,7 @@ impl AnalyzeDayBuilder {
     //     }
     //     return a_measurement;
     // }
-    fn calc_min_max(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
+    pub fn calc_min_max(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
         for idx_m in 0..bp_seq.get_meas_num() {
             // get sample vector for this measurement
             let vec_x = bp_seq.get_ref_meas_vec(idx_m);
@@ -808,7 +808,7 @@ impl AnalyzeDayBuilder {
     ///
     /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
     /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
-    fn calc_quartile(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
+    pub fn calc_quartile(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
         let vec_len: usize = bp_seq.get_meas_vec_len();
 
         // Array of quartile percentages p
@@ -881,7 +881,7 @@ impl AnalyzeDayBuilder {
     ///
     /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
     /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
-    fn calc_quartile_param(sample_len: usize, p: f32) -> (usize, f32) {
+    pub fn calc_quartile_param(sample_len: usize, p: f32) -> (usize, f32) {
         let temp = p * (sample_len - 1) as f32;
         let _k = temp.floor();
 
@@ -889,7 +889,7 @@ impl AnalyzeDayBuilder {
         let a = temp - _k;
         (k, a)
     }
-    fn check_outlier_upper(res: &mut AnalyzeResult, vec_x: &VecMeasType) {
+    pub fn check_outlier_upper(res: &mut AnalyzeResult, vec_x: &VecMeasType) {
         let len = vec_x.len();
         let lim_u = res.quartile[3] + 1.5 * res.iqr;
 
@@ -914,7 +914,7 @@ impl AnalyzeDayBuilder {
             }
         }
     }
-    fn check_outlier_lower(res: &mut AnalyzeResult, vec_x: &VecMeasType) {
+    pub fn check_outlier_lower(res: &mut AnalyzeResult, vec_x: &VecMeasType) {
         let len = vec_x.len();
         let lim_l = res.quartile[1] - 1.5 * res.iqr;
 
@@ -942,7 +942,7 @@ impl AnalyzeDayBuilder {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct AnalyzeDay([AnalyzeResult; 3]);
+pub struct AnalyzeDay([AnalyzeResult; 3]);
 impl AnalyzeDay {
     pub fn get_sys(&self) -> &AnalyzeResult {
         &self.0[0]
@@ -956,7 +956,7 @@ impl AnalyzeDay {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct AnalyzeResult {
+pub struct AnalyzeResult {
     name: String,
     quartile: [f32; 5],
     outliers: Vec<f32>,
@@ -965,7 +965,7 @@ struct AnalyzeResult {
     whisker_lower: f32,
 }
 impl AnalyzeResult {
-    fn new(name: &str) -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
             quartile: [0_f32; 5],
@@ -975,53 +975,53 @@ impl AnalyzeResult {
             whisker_lower: 0_f32,
         }
     }
-    fn get_name(&self) -> &String {
+    pub fn get_name(&self) -> &String {
         &self.name
     }
-    fn get_median(&self) -> f32 {
+    pub fn get_median(&self) -> f32 {
         self.quartile[2]
     }
-    fn get_iqr(&self) -> f32 {
+    pub fn get_iqr(&self) -> f32 {
         self.iqr
     }
-    fn get_min(&self) -> f32 {
+    pub fn get_min(&self) -> f32 {
         self.quartile[0]
     }
-    fn get_max(&self) -> f32 {
+    pub fn get_max(&self) -> f32 {
         self.quartile[4]
     }
-    fn get_q0(&self) -> f32 {
+    pub fn get_q0(&self) -> f32 {
         self.quartile[0]
     }
-    fn get_q1(&self) -> f32 {
+    pub fn get_q1(&self) -> f32 {
         self.quartile[1]
     }
-    fn get_q2(&self) -> f32 {
+    pub fn get_q2(&self) -> f32 {
         self.quartile[2]
     }
-    fn get_q3(&self) -> f32 {
+    pub fn get_q3(&self) -> f32 {
         self.quartile[3]
     }
-    fn get_q4(&self) -> f32 {
+    pub fn get_q4(&self) -> f32 {
         self.quartile[4]
     }
-    fn get_whisker_upper(&self) -> f32 {
+    pub fn get_whisker_upper(&self) -> f32 {
         self.whisker_upper
     }
-    fn get_whisker_lower(&self) -> f32 {
+    pub fn get_whisker_lower(&self) -> f32 {
         self.whisker_lower
     }
-    fn get_outlier(&self) -> &Vec<f32> {
+    pub fn get_outlier(&self) -> &Vec<f32> {
         &self.outliers
     }
-    fn has_outlier(&self) -> bool {
+    pub fn has_outlier(&self) -> bool {
         self.outliers.len() > 0
     }
 }
 
 #[derive(Serialize, Deserialize, DebugPretty)]
 #[allow(non_snake_case)]
-struct DateTimeSimple {
+pub struct DateTimeSimple {
     timestamp: i64,
     Y: i32,
     m: u32,
@@ -1031,7 +1031,7 @@ struct DateTimeSimple {
     S: u32,
 }
 impl DateTimeSimple {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             timestamp: 0,
             Y: 0,
@@ -1042,7 +1042,7 @@ impl DateTimeSimple {
             S: 0,
         }
     }
-    fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
+    pub fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
         Self {
             timestamp: date_time_utc.timestamp(),
             Y: date_time_utc.year(),
@@ -1053,7 +1053,7 @@ impl DateTimeSimple {
             S: date_time_utc.second(),
         }
     }
-    fn set_utc(&mut self, date_time_utc: &DateTime<Utc>) {
+    pub fn set_utc(&mut self, date_time_utc: &DateTime<Utc>) {
         self.timestamp = date_time_utc.timestamp();
         self.Y = date_time_utc.year();
         self.m = date_time_utc.month();
