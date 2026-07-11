@@ -26,24 +26,6 @@ use std::path::PathBuf;
 
 // ################################################################
 
-// const TEMP_HEADER: &str = "date,time,sys,dia,pul";
-const SECS_IN_DAYS_F32: f32 = 86400_f32;
-
-// ################################################################
-
-/// Array describing a blood pressure measurement sample,
-/// consisting of [[`dia`, `sys`, `pul`]].
-type BpSampleType = [f32; 3];
-/// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
-type CollDayHashType = HashMap<i64, CollectionDay>;
-
-/// Vector of measurement samples (`f32`)
-type VecMeasType = Vec<f32>;
-/// Vector of measurement vectors ([`VecMeasType`])
-type VecMeas2dType = Vec<VecMeasType>;
-
-// ################################################################
-
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
@@ -63,6 +45,24 @@ struct Cli {
     #[arg(short, long)]
     rebuild: bool,
 }
+
+// ################################################################
+
+// const TEMP_HEADER: &str = "date,time,sys,dia,pul";
+const SECS_IN_DAYS_F32: f32 = 86400_f32;
+
+// ################################################################
+
+/// Array describing a blood pressure measurement sample,
+/// consisting of [[`dia`, `sys`, `pul`]].
+type BpSampleType = [f32; 3];
+/// `HashMap` that stores `CollectionDay` objs by their field `sec: i64`.
+type CollDayHashType = HashMap<i64, CollectionDay>;
+
+/// Vector of measurement samples (`f32`)
+type VecMeasType = Vec<f32>;
+/// Vector of measurement vectors ([`VecMeasType`])
+type VecMeas2dType = Vec<VecMeasType>;
 
 // ################################################################
 
