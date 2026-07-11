@@ -1,28 +1,16 @@
 #![allow(unused)]
 #![allow(unused_labels)]
-use anyhow::Context;
-use anyhow::bail;
-use chrono::DateTime;
-use chrono::Datelike;
-use chrono::Local;
-use chrono::NaiveDateTime;
-use chrono::TimeDelta;
-use chrono::Timelike;
-use chrono::Utc;
+use anyhow::{Context, bail};
+use chrono::{DateTime, Datelike, Local, NaiveDateTime, TimeDelta, Timelike, Utc};
 use clap::Parser;
 use pretty_simple_display::DebugPretty;
-use serde::Deserialize;
-use serde::Serialize;
-use std::cmp::max;
-use std::cmp::min;
+use serde::{Deserialize, Serialize};
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::fmt;
-use std::fs;
-use std::fs::File;
-use std::fs::OpenOptions;
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // ################################################################
 
