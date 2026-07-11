@@ -35,6 +35,494 @@ struct Cli {
     #[arg(short, long)]
     rebuild: bool,
 }
+// ################################################################
+
+#[derive(Serialize, Deserialize, DebugPretty)]
+struct FileHandler {
+    path_dir: PathBuf,
+    path_file: PathBuf,
+}
+impl FileHandler {
+    pub fn new(directory: &str, file: &str) -> Self {
+        let p_dir = Path::new(&directory).to_owned();
+        let p_file = Path::new(&directory).join(&file).to_owned();
+
+        let ret_obj = Self {
+            path_dir: p_dir,
+            path_file: p_file,
+        };
+        ret_obj
+    }
+    fn get_path_dir(&self) -> &PathBuf {
+        &self.path_dir
+    }
+    fn get_path_dir_str(&self) -> String {
+        self.get_path_dir().display().to_string()
+    }
+    fn get_path_file(&self) -> &PathBuf {
+        &self.path_file
+    }
+    fn get_path_file_str(&self) -> String {
+        self.get_path_file().display().to_string()
+    }
+    /// Checks if directory exists and tries to create it, if not.
+    ///
+    /// # anyhow::Errors
+    /// - Unable to create directory
+    pub fn check_directory(&self) -> anyhow::Result<()> {
+        let path_dir = self.get_path_dir();
+
+        if path_dir.exists() {
+            return Ok(());
+        }
+        log_warning(&format!("Directory missing: `{:?}`", path_dir,));
+
+        fs::create_dir(path_dir)
+            .context(format!("Unable to create directory: `{:?}`", path_dir))?;
+
+        log_message(&format!("Directory created: `{:?}`", path_dir));
+        return Ok(());
+    }
+    /// Checks if file exists.
+    ///
+    /// | Case                     | Returns                                 |
+    /// | ------------------------ | --------------------------------------- |
+    /// | File does not exist      | `Ok( FileState::Missing )`              |
+    /// | File exists              | `Ok( FileState::Exists(filesize:u64) )` |
+    /// | Missing file permissions | `anyhow::Error`                         |
+    ///
+    /// # anyhow::Errors
+    /// - Unable to get `metadata` of file
+    pub fn check_file_exists(&self) -> anyhow::Result<FileState> {
+        let path_file = self.get_path_file();
+
+        if !path_file.exists() {
+            return Ok(FileState::Missing);
+        }
+        let metadata = fs::metadata(path_file).context(format!(
+            "Unable to get `metadata` of file: `{:?}`",
+            path_file
+        ))?;
+        return Ok(FileState::Exists(metadata.len()));
+    }
+    /// Will try to open the file.
+    ///
+    /// | `FileOpenMode` | Action    |
+    /// | -------------- | --------- |
+    /// | `Read`         | Open file in Read mode  |
+    /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
+    /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
+    ///
+    /// # anyhow::Errors
+    /// - Unable to open file (mode)
+    pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
+        let path_file = self.get_path_file();
+
+        let fh = match mode {
+            FileOpenMode::Read => OpenOptions::new().read(true).open(path_file),
+            FileOpenMode::Write => OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(path_file),
+            FileOpenMode::Append => OpenOptions::new().write(true).append(true).open(path_file),
+        }
+        .context(format!(
+            "Unable to open file (`{:?}`): `{:?}`",
+            mode, path_file,
+        ))?;
+
+        return Ok(fh);
+    }
+}
+
+#[derive(Serialize, Deserialize, DebugPretty)]
+struct FileHandlerCsv {
+    fh_core: FileHandler,
+}
+impl FileHandlerCsv {
+    const CSV_HEADER: &str = "date,time,sys,dia,pul";
+
+    pub fn new(directory: &str, file: &str) -> Self {
+        let ret_obj = Self {
+            fh_core: FileHandler::new(directory, file),
+        };
+
+        ret_obj
+    }
+    /// Check if file/directory exists
+    /// - If missing: create with default content
+    /// - If exists: check if header valid
+    ///
+    /// # anyhow::Errors
+    /// - `self.fh_core.check_directory`
+    ///   - Unable to create directory
+    /// - `self.fh_core.check_file_exists`
+    ///   - Unable to get `metadata` of file
+    /// - `self.create_init_file`
+    ///   - Unable to open file (mode)
+    ///   - Unable to write to file
+    /// - `self.check_file_header`
+    ///   - Unable to open file (mode)
+    ///   - IO error while reading first line
+    ///   - Major error: File is empty!
+    ///   - File has missing/wrong csv header
+    pub fn check_file(&self) -> anyhow::Result<()> {
+        self.fh_core.check_directory()?;
+
+        let f_state = self.fh_core.check_file_exists()?;
+        match f_state {
+            FileState::Missing => {
+                self.create_init_file()?;
+                Ok(())
+            }
+            FileState::Exists(file_size) => {
+                if file_size == 0 {
+                    self.create_init_file()?;
+                    Ok(())
+                } else {
+                    self.check_file_header()?;
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    /// Create/initialize the file with default content
+    ///
+    /// # anyhow::Errors
+    /// - Unable to write to file
+    /// - `self.file_open`
+    ///   - Unable to open file (mode)
+    fn create_init_file(&self) -> anyhow::Result<()> {
+        let mode = FileOpenMode::Write;
+        let path_str = self.fh_core.get_path_file_str();
+
+        let fh = self.file_open(&mode)?;
+        fh.sync_all()
+            .context(format!("Unable to save file `{}`.", path_str))?;
+
+        return Ok(());
+    }
+
+    /// Check the header (first line) of file
+    ///
+    /// # anyhow::Errors
+    /// - IO error while reading first line
+    /// - Major error: File is empty!
+    /// - File has missing/wrong csv header
+    /// - `self.file_open`
+    ///   - Unable to open file (mode)
+    fn check_file_header(&self) -> anyhow::Result<()> {
+        let mode = FileOpenMode::Read;
+        let path_str = self.fh_core.get_path_file_str();
+
+        let f_read = self.file_open(&mode)?;
+
+        let reader = BufReader::new(f_read);
+        let mut lines = reader.lines();
+
+        // Get first line
+        let res = match lines.next() {
+            Some(x) => x,
+            None => bail!("Major error: File is empty!"),
+        };
+        let line = res.context("IO error while reading first line")?;
+
+        if !(Self::CSV_HEADER == &line[..]) {
+            bail!(
+                "File has missing/wrong csv header: `{}`\nT: [{}]\nF: [{}]",
+                path_str,
+                Self::CSV_HEADER,
+                &line[..]
+            );
+        }
+        Ok(())
+    }
+
+    /// Will try to open the file.
+    ///
+    /// | `FileOpenMode` | Action    |
+    /// | -------------- | --------- |
+    /// | `Read`         | Open file in Read mode  |
+    /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
+    /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
+    ///
+    /// # anyhow::Errors
+    /// - Unable to open file (mode)
+    /// - Could not write `CSV_HEADER` to file
+    pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
+        let fh = self.fh_core.file_open(mode)?;
+        match mode {
+            _ => (),
+            FileOpenMode::Write => {
+                // Write CSV header line
+                writeln!(&fh, "{}", Self::CSV_HEADER)
+                    .context("Could not write `CSV_HEADER` to file.")
+                    .unwrap();
+            }
+        };
+        return Ok(fh);
+    }
+
+    pub fn get_csv_content(&self) -> anyhow::Result<CollectionCsv> {
+        let fh_csv = self.file_open(&FileOpenMode::Read)?;
+
+        // create CSV reader
+        let mut rdr = csv::ReaderBuilder::new()
+            .delimiter(b',')
+            .from_reader(fh_csv);
+
+        // deserialize reader into `MeasCsv` struct
+        let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
+
+        let mut ret_coll = CollectionCsv::new_with_capacity(records.len());
+
+        // try to insert `MeasCsv` objs into `CollectionCsv `
+        for result in records {
+            let entry: MeasCsv = result.context("Unable to parse entry of CSV file.")?;
+            ret_coll.add_csv_consume(entry);
+        }
+
+        // Sort collection vector by fields date, time
+        ret_coll.sort();
+
+        return Ok(ret_coll);
+    }
+}
+
+// ################################################################
+// ################################################################
+
+// #[derive(Debug, PartialEq)]
+// enum CsvOpenMode {
+//     Read,
+//     WriteReset,
+//     WriteAppend,
+// }
+
+/// | `FileOpenMode` | Meaning   |
+/// | -------------- | --------- |
+/// | `Read`         | Open file in Read mode  |
+/// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
+/// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
+#[derive(Debug, PartialEq)]
+enum FileOpenMode {
+    /// Open file in Read mode
+    Read,
+
+    ///Open (or create) file in Write mode: Overwrite and truncate previous content
+    Write,
+
+    /// Open (or create) file in Write mode: Append to previous content
+    Append,
+}
+
+/// | `FileState`   | Meaning   |
+/// | ------------- | --------- |
+/// | `Missing`     | File does not exist                   |
+/// | `Exists(u64)` | File exists and is `u64` bytes long   |
+#[derive(Debug, PartialEq)]
+enum FileState {
+    /// File does not exist
+    Missing,
+
+    /// File exists and is `u64` bytes long
+    Exists(u64),
+}
+
+// ################################################################
+// ################################################################
+fn main() {
+    let cli = Cli::parse();
+    // println!("CLI: {:?}\n", &cli);
+
+    let file_str = format!("{}.csv", get_date_ym());
+    let dir_str = "data";
+    let csv_worker = FileHandlerCsv::new(&dir_str, &file_str);
+
+    csv_worker.check_file().unwrap();
+    // worker_init_csv();
+
+    match cli.add {
+        Some(bp) => worker_bp_add(&csv_worker, &bp),
+        _ => (),
+    }
+
+    if cli.rebuild || cli.status || cli.output {
+        // let csv_collection = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
+        let csv_collection = csv_worker.get_csv_content().unwrap();
+
+        if cli.rebuild {
+            worker_csv_rebuild(&csv_worker, &csv_collection);
+        }
+        if cli.output {
+            worker_output(&csv_collection);
+        }
+        if cli.status {
+            worker_csv_status(&csv_collection);
+        }
+    }
+
+    return;
+}
+
+/// Will read the CSV file, sort measurements and overwrite the file
+fn worker_output(csv_collection: &CollectionCsv) {
+    let coll_m2 = csv_collection.to_coll_m2(2);
+
+    let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
+
+    println!("{coll_month:?}");
+    if true {
+        return;
+    }
+    println!("Attempt json export");
+    let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
+    println!("{pretty}");
+
+    // // println!("{:?}", cm.get_ref());
+    // let hm = coll_month.get_ref();
+    // let keys = coll_month.get_key_sorted();
+    // println!("keys (# {}): {:?}", keys.len(), keys);
+
+    // for k in keys {
+    //     if let Some(cd) = hm.get(&k) {
+    //         let size = cd.get_sample_size();
+    //         let mut r = cd.get_analysis_sys_ref();
+    //         let t_sys = format!(
+    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+    //             r.get_name(),
+    //             r.get_whisker_lower(),
+    //             r.get_q1(),
+    //             r.get_q2(),
+    //             r.get_q3(),
+    //             r.get_whisker_upper(),
+    //             r.get_iqr(),
+    //             r.get_outlier().len()
+    //         );
+    //         r = cd.get_analysis_dia_ref();
+    //         let t_dia = format!(
+    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+    //             r.get_name(),
+    //             r.get_whisker_lower(),
+    //             r.get_q1(),
+    //             r.get_q2(),
+    //             r.get_q3(),
+    //             r.get_whisker_upper(),
+    //             r.get_iqr(),
+    //             r.get_outlier().len()
+    //         );
+    //         r = cd.get_analysis_pul_ref();
+    //         let t_pul = format!(
+    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
+    //             r.get_name(),
+    //             r.get_whisker_lower(),
+    //             r.get_q1(),
+    //             r.get_q2(),
+    //             r.get_q3(),
+    //             r.get_whisker_upper(),
+    //             r.get_iqr(),
+    //             r.get_outlier().len()
+    //         );
+    //         println!("\n[{k}, {:.2}] #Samples: {}", cd.day, cd.get_sample_size());
+    //         println!("\t{}", t_sys);
+    //         println!("\t{}", t_dia);
+    //         println!("\t{}", t_pul);
+    //     }
+    // }
+}
+
+/// Will read the CSV file, sort measurements and overwrite the file
+fn worker_csv_rebuild(csv_worker: &FileHandlerCsv, csv_collection: &CollectionCsv) {
+    // Open CSV File and reset content
+    let fh_csv = csv_worker.file_open(&FileOpenMode::Write).unwrap();
+
+    for entry in csv_collection.get_ref() {
+        writeln!(&fh_csv, "{}", entry)
+            .context("Could not write to file")
+            .unwrap();
+    }
+
+    // Save changes to disk
+    fh_csv.sync_all().context("Unable to save File .").unwrap();
+}
+
+fn worker_csv_status(csv_collection: &CollectionCsv) {
+    let csv_entries = csv_collection.get_ref();
+    let date_ym = get_date_ym();
+
+    let csv_len = csv_entries.len();
+    println!("File for '{date_ym}' contains {csv_len} entries.");
+
+    if csv_len > 0 {
+        let csv_tail_range = if csv_len <= 5 {
+            0..csv_len
+        } else {
+            (csv_len - 5)..csv_len
+        };
+
+        println!("Latest entries:");
+        for i in csv_tail_range {
+            println!("[{}] {:?}", i + 1, csv_entries[i]);
+        }
+    }
+}
+
+fn worker_bp_add(csv_worker: &FileHandlerCsv, bp: &Vec<f32>) {
+    let sys = bp[0];
+    let dia = bp[1];
+    let pul = bp[2];
+
+    let measurement = MeasCsv::new(sys, dia, pul);
+
+    // Open CSV file in 'append' mode
+    let fh_csv = csv_worker.file_open(&FileOpenMode::Append).unwrap();
+
+    // Append entry to CSV file
+    writeln!(&fh_csv, "{}", measurement)
+        .context("Could not write to file")
+        .unwrap();
+
+    // Save changes to disk
+    fh_csv.sync_all().context("Unable to save File .").unwrap();
+}
+
+// fn worker_init_csv() {
+//     let path_dir_string = get_dir_path_string();
+//     let path_file_string = get_file_path_string();
+//
+//     check_path(&path_dir_string).expect(&format!(
+//         "Unable to perform 'Check of Directory {path_dir_string}'."
+//     ));
+//     check_file(&path_file_string).expect(&format!(
+//         "Unable to perform 'Check of work File {path_file_string}'."
+//     ));
+// }
+
+fn log_message(msg: &str) {
+    println!("[MESSAGE]\t{msg}");
+}
+fn log_warning(wrn: &str) {
+    println!("[WARNING]\t{wrn}");
+}
+fn log_error(err: &str) {
+    println!("[ERROR]\t{err}");
+}
+
+fn get_date() -> String {
+    Local::now().format("%Y-%m-%d").to_string()
+}
+fn get_date_ym() -> String {
+    Local::now().format("%Y-%m").to_string()
+}
+fn get_time() -> String {
+    Local::now().format("%H:%M:%S").to_string()
+}
+
+// ################################################################
+
+// ################################################################
 
 // ################################################################
 
@@ -1067,641 +1555,3 @@ mod bp_mod {
         }
     }
 }
-
-// ################################################################
-
-#[derive(Serialize, Deserialize, DebugPretty)]
-struct FileHandler {
-    path_dir: PathBuf,
-    path_file: PathBuf,
-}
-impl FileHandler {
-    pub fn new(directory: &str, file: &str) -> Self {
-        let p_dir = Path::new(&directory).to_owned();
-        let p_file = Path::new(&directory).join(&file).to_owned();
-
-        let ret_obj = Self {
-            path_dir: p_dir,
-            path_file: p_file,
-        };
-        ret_obj
-    }
-    fn get_path_dir(&self) -> &PathBuf {
-        &self.path_dir
-    }
-    fn get_path_dir_str(&self) -> String {
-        self.get_path_dir().display().to_string()
-    }
-    fn get_path_file(&self) -> &PathBuf {
-        &self.path_file
-    }
-    fn get_path_file_str(&self) -> String {
-        self.get_path_file().display().to_string()
-    }
-    /// Checks if directory exists and tries to create it, if not.
-    ///
-    /// # anyhow::Errors
-    /// - Unable to create directory
-    pub fn check_directory(&self) -> anyhow::Result<()> {
-        let path_dir = self.get_path_dir();
-
-        if path_dir.exists() {
-            return Ok(());
-        }
-        log_warning(&format!("Directory missing: `{:?}`", path_dir,));
-
-        fs::create_dir(path_dir)
-            .context(format!("Unable to create directory: `{:?}`", path_dir))?;
-
-        log_message(&format!("Directory created: `{:?}`", path_dir));
-        return Ok(());
-    }
-    /// Checks if file exists.
-    ///
-    /// | Case                     | Returns                                 |
-    /// | ------------------------ | --------------------------------------- |
-    /// | File does not exist      | `Ok( FileState::Missing )`              |
-    /// | File exists              | `Ok( FileState::Exists(filesize:u64) )` |
-    /// | Missing file permissions | `anyhow::Error`                         |
-    ///
-    /// # anyhow::Errors
-    /// - Unable to get `metadata` of file
-    pub fn check_file_exists(&self) -> anyhow::Result<FileState> {
-        let path_file = self.get_path_file();
-
-        if !path_file.exists() {
-            return Ok(FileState::Missing);
-        }
-        let metadata = fs::metadata(path_file).context(format!(
-            "Unable to get `metadata` of file: `{:?}`",
-            path_file
-        ))?;
-        return Ok(FileState::Exists(metadata.len()));
-    }
-    /// Will try to open the file.
-    ///
-    /// | `FileOpenMode` | Action    |
-    /// | -------------- | --------- |
-    /// | `Read`         | Open file in Read mode  |
-    /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
-    /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
-    ///
-    /// # anyhow::Errors
-    /// - Unable to open file (mode)
-    pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
-        let path_file = self.get_path_file();
-
-        let fh = match mode {
-            FileOpenMode::Read => OpenOptions::new().read(true).open(path_file),
-            FileOpenMode::Write => OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(path_file),
-            FileOpenMode::Append => OpenOptions::new().write(true).append(true).open(path_file),
-        }
-        .context(format!(
-            "Unable to open file (`{:?}`): `{:?}`",
-            mode, path_file,
-        ))?;
-
-        return Ok(fh);
-    }
-}
-
-#[derive(Serialize, Deserialize, DebugPretty)]
-struct FileHandlerCsv {
-    fh_core: FileHandler,
-}
-impl FileHandlerCsv {
-    const CSV_HEADER: &str = "date,time,sys,dia,pul";
-
-    pub fn new(directory: &str, file: &str) -> Self {
-        let ret_obj = Self {
-            fh_core: FileHandler::new(directory, file),
-        };
-
-        ret_obj
-    }
-    /// Check if file/directory exists
-    /// - If missing: create with default content
-    /// - If exists: check if header valid
-    ///
-    /// # anyhow::Errors
-    /// - `self.fh_core.check_directory`
-    ///   - Unable to create directory
-    /// - `self.fh_core.check_file_exists`
-    ///   - Unable to get `metadata` of file
-    /// - `self.create_init_file`
-    ///   - Unable to open file (mode)
-    ///   - Unable to write to file
-    /// - `self.check_file_header`
-    ///   - Unable to open file (mode)
-    ///   - IO error while reading first line
-    ///   - Major error: File is empty!
-    ///   - File has missing/wrong csv header
-    pub fn check_file(&self) -> anyhow::Result<()> {
-        self.fh_core.check_directory()?;
-
-        let f_state = self.fh_core.check_file_exists()?;
-        match f_state {
-            FileState::Missing => {
-                self.create_init_file()?;
-                Ok(())
-            }
-            FileState::Exists(file_size) => {
-                if file_size == 0 {
-                    self.create_init_file()?;
-                    Ok(())
-                } else {
-                    self.check_file_header()?;
-                    Ok(())
-                }
-            }
-        }
-    }
-
-    /// Create/initialize the file with default content
-    ///
-    /// # anyhow::Errors
-    /// - Unable to write to file
-    /// - `self.file_open`
-    ///   - Unable to open file (mode)
-    fn create_init_file(&self) -> anyhow::Result<()> {
-        let mode = FileOpenMode::Write;
-        let path_str = self.fh_core.get_path_file_str();
-
-        let fh = self.file_open(&mode)?;
-        fh.sync_all()
-            .context(format!("Unable to save file `{}`.", path_str))?;
-
-        return Ok(());
-    }
-
-    /// Check the header (first line) of file
-    ///
-    /// # anyhow::Errors
-    /// - IO error while reading first line
-    /// - Major error: File is empty!
-    /// - File has missing/wrong csv header
-    /// - `self.file_open`
-    ///   - Unable to open file (mode)
-    fn check_file_header(&self) -> anyhow::Result<()> {
-        let mode = FileOpenMode::Read;
-        let path_str = self.fh_core.get_path_file_str();
-
-        let f_read = self.file_open(&mode)?;
-
-        let reader = BufReader::new(f_read);
-        let mut lines = reader.lines();
-
-        // Get first line
-        let res = match lines.next() {
-            Some(x) => x,
-            None => bail!("Major error: File is empty!"),
-        };
-        let line = res.context("IO error while reading first line")?;
-
-        if !(Self::CSV_HEADER == &line[..]) {
-            bail!(
-                "File has missing/wrong csv header: `{}`\nT: [{}]\nF: [{}]",
-                path_str,
-                Self::CSV_HEADER,
-                &line[..]
-            );
-        }
-        Ok(())
-    }
-
-    /// Will try to open the file.
-    ///
-    /// | `FileOpenMode` | Action    |
-    /// | -------------- | --------- |
-    /// | `Read`         | Open file in Read mode  |
-    /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
-    /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
-    ///
-    /// # anyhow::Errors
-    /// - Unable to open file (mode)
-    /// - Could not write `CSV_HEADER` to file
-    pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
-        let fh = self.fh_core.file_open(mode)?;
-        match mode {
-            _ => (),
-            FileOpenMode::Write => {
-                // Write CSV header line
-                writeln!(&fh, "{}", Self::CSV_HEADER)
-                    .context("Could not write `CSV_HEADER` to file.")
-                    .unwrap();
-            }
-        };
-        return Ok(fh);
-    }
-
-    pub fn get_csv_content(&self) -> anyhow::Result<CollectionCsv> {
-        let fh_csv = self.file_open(&FileOpenMode::Read)?;
-
-        // create CSV reader
-        let mut rdr = csv::ReaderBuilder::new()
-            .delimiter(b',')
-            .from_reader(fh_csv);
-
-        // deserialize reader into `MeasCsv` struct
-        let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
-
-        let mut ret_coll = CollectionCsv::new_with_capacity(records.len());
-
-        // try to insert `MeasCsv` objs into `CollectionCsv `
-        for result in records {
-            let entry: MeasCsv = result.context("Unable to parse entry of CSV file.")?;
-            ret_coll.add_csv_consume(entry);
-        }
-
-        // Sort collection vector by fields date, time
-        ret_coll.sort();
-
-        return Ok(ret_coll);
-    }
-}
-
-// ################################################################
-// ################################################################
-
-// #[derive(Debug, PartialEq)]
-// enum CsvOpenMode {
-//     Read,
-//     WriteReset,
-//     WriteAppend,
-// }
-
-/// | `FileOpenMode` | Meaning   |
-/// | -------------- | --------- |
-/// | `Read`         | Open file in Read mode  |
-/// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
-/// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
-#[derive(Debug, PartialEq)]
-enum FileOpenMode {
-    /// Open file in Read mode
-    Read,
-
-    ///Open (or create) file in Write mode: Overwrite and truncate previous content
-    Write,
-
-    /// Open (or create) file in Write mode: Append to previous content
-    Append,
-}
-
-/// | `FileState`   | Meaning   |
-/// | ------------- | --------- |
-/// | `Missing`     | File does not exist                   |
-/// | `Exists(u64)` | File exists and is `u64` bytes long   |
-#[derive(Debug, PartialEq)]
-enum FileState {
-    /// File does not exist
-    Missing,
-
-    /// File exists and is `u64` bytes long
-    Exists(u64),
-}
-
-// ################################################################
-// ################################################################
-fn main() {
-    let cli = Cli::parse();
-    // println!("CLI: {:?}\n", &cli);
-
-    let file_str = format!("{}.csv", get_date_ym());
-    let dir_str = "data";
-    let csv_worker = FileHandlerCsv::new(&dir_str, &file_str);
-
-    csv_worker.check_file().unwrap();
-    // worker_init_csv();
-
-    match cli.add {
-        Some(bp) => worker_bp_add(&csv_worker, &bp),
-        _ => (),
-    }
-
-    if cli.rebuild || cli.status || cli.output {
-        // let csv_collection = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
-        let csv_collection = csv_worker.get_csv_content().unwrap();
-
-        if cli.rebuild {
-            worker_csv_rebuild(&csv_worker, &csv_collection);
-        }
-        if cli.output {
-            worker_output(&csv_collection);
-        }
-        if cli.status {
-            worker_csv_status(&csv_collection);
-        }
-    }
-
-    return;
-}
-
-/// Will read the CSV file, sort measurements and overwrite the file
-fn worker_output(csv_collection: &CollectionCsv) {
-    let coll_m2 = csv_collection.to_coll_m2(2);
-
-    let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
-
-    println!("{coll_month:?}");
-    if true {
-        return;
-    }
-    println!("Attempt json export");
-    let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
-    println!("{pretty}");
-
-    // // println!("{:?}", cm.get_ref());
-    // let hm = coll_month.get_ref();
-    // let keys = coll_month.get_key_sorted();
-    // println!("keys (# {}): {:?}", keys.len(), keys);
-
-    // for k in keys {
-    //     if let Some(cd) = hm.get(&k) {
-    //         let size = cd.get_sample_size();
-    //         let mut r = cd.get_analysis_sys_ref();
-    //         let t_sys = format!(
-    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
-    //             r.get_name(),
-    //             r.get_whisker_lower(),
-    //             r.get_q1(),
-    //             r.get_q2(),
-    //             r.get_q3(),
-    //             r.get_whisker_upper(),
-    //             r.get_iqr(),
-    //             r.get_outlier().len()
-    //         );
-    //         r = cd.get_analysis_dia_ref();
-    //         let t_dia = format!(
-    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
-    //             r.get_name(),
-    //             r.get_whisker_lower(),
-    //             r.get_q1(),
-    //             r.get_q2(),
-    //             r.get_q3(),
-    //             r.get_whisker_upper(),
-    //             r.get_iqr(),
-    //             r.get_outlier().len()
-    //         );
-    //         r = cd.get_analysis_pul_ref();
-    //         let t_pul = format!(
-    //             "[{}] wL: {:3.0}, Q1: {:5.1}, Q2: {:5.1}, Q3: {:5.1}, wU: {:3.0}, IQR: {:5.1}, #out: {}",
-    //             r.get_name(),
-    //             r.get_whisker_lower(),
-    //             r.get_q1(),
-    //             r.get_q2(),
-    //             r.get_q3(),
-    //             r.get_whisker_upper(),
-    //             r.get_iqr(),
-    //             r.get_outlier().len()
-    //         );
-    //         println!("\n[{k}, {:.2}] #Samples: {}", cd.day, cd.get_sample_size());
-    //         println!("\t{}", t_sys);
-    //         println!("\t{}", t_dia);
-    //         println!("\t{}", t_pul);
-    //     }
-    // }
-}
-
-/// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_worker: &FileHandlerCsv, csv_collection: &CollectionCsv) {
-    // Open CSV File and reset content
-    let fh_csv = csv_worker.file_open(&FileOpenMode::Write).unwrap();
-
-    for entry in csv_collection.get_ref() {
-        writeln!(&fh_csv, "{}", entry)
-            .context("Could not write to file")
-            .unwrap();
-    }
-
-    // Save changes to disk
-    fh_csv.sync_all().context("Unable to save File .").unwrap();
-}
-
-fn worker_csv_status(csv_collection: &CollectionCsv) {
-    let csv_entries = csv_collection.get_ref();
-    let date_ym = get_date_ym();
-
-    let csv_len = csv_entries.len();
-    println!("File for '{date_ym}' contains {csv_len} entries.");
-
-    if csv_len > 0 {
-        let csv_tail_range = if csv_len <= 5 {
-            0..csv_len
-        } else {
-            (csv_len - 5)..csv_len
-        };
-
-        println!("Latest entries:");
-        for i in csv_tail_range {
-            println!("[{}] {:?}", i + 1, csv_entries[i]);
-        }
-    }
-}
-
-fn worker_bp_add(csv_worker: &FileHandlerCsv, bp: &Vec<f32>) {
-    let sys = bp[0];
-    let dia = bp[1];
-    let pul = bp[2];
-
-    let measurement = MeasCsv::new(sys, dia, pul);
-
-    // Open CSV file in 'append' mode
-    let fh_csv = csv_worker.file_open(&FileOpenMode::Append).unwrap();
-
-    // Append entry to CSV file
-    writeln!(&fh_csv, "{}", measurement)
-        .context("Could not write to file")
-        .unwrap();
-
-    // Save changes to disk
-    fh_csv.sync_all().context("Unable to save File .").unwrap();
-}
-
-// fn worker_init_csv() {
-//     let path_dir_string = get_dir_path_string();
-//     let path_file_string = get_file_path_string();
-//
-//     check_path(&path_dir_string).expect(&format!(
-//         "Unable to perform 'Check of Directory {path_dir_string}'."
-//     ));
-//     check_file(&path_file_string).expect(&format!(
-//         "Unable to perform 'Check of work File {path_file_string}'."
-//     ));
-// }
-
-// ################################################################
-
-// fn open_csv_file(path_str: &str, mode: CsvOpenMode) -> File {
-//     let path_file = Path::new(path_str);
-//
-//     let fh_csv: File;
-//     match mode {
-//         CsvOpenMode::Read => {
-//             fh_csv = OpenOptions::new()
-//                 .read(true)
-//                 .open(path_file)
-//                 .expect(&format!(
-//                     "Unable to open File '{}' in {:?}.",
-//                     path_str, mode
-//                 ));
-//         }
-//         CsvOpenMode::WriteReset => {
-//             fh_csv = OpenOptions::new()
-//                 .write(true)
-//                 .create(true)
-//                 .truncate(true)
-//                 .open(path_file)
-//                 .expect(&format!(
-//                     "Unable to open File '{}' in {:?}.",
-//                     path_str, mode
-//                 ));
-//
-//             // Write CSV header line
-//             writeln!(&fh_csv, "{}", TEMP_HEADER).expect(&format!(
-//                 "Could not write to File '{}' in {:?}.",
-//                 path_str, mode
-//             ));
-//         }
-//         CsvOpenMode::WriteAppend => {
-//             fh_csv = OpenOptions::new()
-//                 .write(true)
-//                 .append(true)
-//                 .open(path_file)
-//                 .expect(&format!(
-//                     "Unable to open File '{}' in {:?}.",
-//                     path_str, mode
-//                 ));
-//         }
-//     }
-//     fh_csv
-// }
-
-// fn read_csv_content() -> Result<CollectionCsv, Box<dyn std::error::Error>> {
-//     let path_string = get_file_path_string();
-//
-//     let fh_csv = open_csv_file(&path_string, CsvOpenMode::Read);
-//     let mut rdr = csv::ReaderBuilder::new()
-//         .delimiter(b',')
-//         .from_reader(fh_csv);
-//
-//     // let records_iter = rdr.deserialize();
-//
-//     let records: Vec<Result<MeasCsv, csv::Error>> = rdr.deserialize().collect();
-//     // let mut ret: Vec<MeasCsv> = Vec::with_capacity(records.len());
-//     let mut coll = CollectionCsv::new_with_capacity(records.len());
-//
-//     for result in records {
-//         let entry: MeasCsv = result?;
-//         // println!("{:?}", entry);
-//         // ret.push(entry);
-//         coll.add_csv_consume(entry);
-//     }
-//
-//     // // Sort vector of Measurement by date, time
-//     // ret.sort_by(|a, b| a.date.cmp(&b.date).then(a.time.cmp(&b.time)));
-//     coll.sort();
-//
-//     Ok(coll)
-// }
-
-// fn check_file(path_file_str: &str) -> Result<(), std::io::Error> {
-//     // let path_string = get_file_path_string();
-//     let path_file = Path::new(path_file_str);
-//     let fh: File;
-//
-//     if path_file.exists() {
-//         let file_meta = fs::metadata(path_file).expect("unable to read metadata");
-//         // println!("metadata len: {:?}", file_meta.len());
-//
-//         if file_meta.len() > 0 {
-//             let f_read = File::open(path_file)?;
-//             let reader = BufReader::new(f_read);
-//
-//             let mut lines = reader.lines();
-//             let line = lines
-//                 .next()
-//                 .expect("Unable to read first Line of File")
-//                 .expect("Unable to read first Line of File");
-//
-//             if TEMP_HEADER == &line[..] {
-//                 return Ok(());
-//             } else {
-//                 panic!(
-//                     "File '{}' has content, but is missing csv header!",
-//                     path_file_str
-//                 );
-//             }
-//         }
-//         log_message(&format!(
-//             "Empty File '{}' missing csv header.",
-//             path_file_str
-//         ));
-//
-//         fh = File::create(path_file)?;
-//     } else {
-//         log_warning(&format!("File '{}' missing.", path_file_str));
-//
-//         fh = File::create_new(path_file)?;
-//         log_message(&format!("Empty File '{}' created.", path_file_str));
-//     }
-//
-//     if let Err(e) = writeln!(&fh, "{}", TEMP_HEADER) {
-//         eprintln!("Could not write to File: {}", e);
-//     }
-//
-//     fh.sync_all()?;
-//     log_message(&format!("Csv header added to File '{}'.", path_file_str));
-//
-//     Ok(())
-// }
-
-// fn check_path(path_dir_str: &str) -> std::io::Result<()> {
-//     let path_dir = Path::new(path_dir_str);
-//
-//     if path_dir.exists() {
-//         return Ok(());
-//     }
-//     log_warning(&format!("Directory '{}' missing.", path_dir_str));
-//
-//     match fs::create_dir(path_dir) {
-//         Ok(_) => {
-//             log_message(&format!("Directory '{}' created.", path_dir_str));
-//             Ok(())
-//         }
-//         Err(e) => {
-//             log_error(&format!("Unable to create Directory '{}'.", path_dir_str));
-//             Err(e)
-//         }
-//     }
-// }
-
-fn log_message(msg: &str) {
-    println!("[MESSAGE]\t{msg}");
-}
-fn log_warning(wrn: &str) {
-    println!("[WARNING]\t{wrn}");
-}
-fn log_error(err: &str) {
-    println!("[ERROR]\t{err}");
-}
-
-fn get_date() -> String {
-    Local::now().format("%Y-%m-%d").to_string()
-}
-fn get_date_ym() -> String {
-    Local::now().format("%Y-%m").to_string()
-}
-fn get_time() -> String {
-    Local::now().format("%H:%M:%S").to_string()
-}
-
-// fn get_file_path_string() -> String {
-//     format!("./data/{}.csv", get_date_ym())
-// }
-// fn get_dir_path_string() -> String {
-//     format!("./data")
-// }
