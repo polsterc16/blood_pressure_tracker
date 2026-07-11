@@ -251,13 +251,13 @@ impl FileHandlerCsv {
     pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
         let fh = self.fh_core.file_open(mode)?;
         match mode {
-            _ => (),
             FileOpenMode::Write => {
                 // Write CSV header line
                 writeln!(&fh, "{}", Self::CSV_HEADER)
                     .context("Could not write `CSV_HEADER` to file.")
                     .unwrap();
             }
+            _ => (),
         };
         return Ok(fh);
     }
