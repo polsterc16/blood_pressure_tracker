@@ -9,7 +9,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
-use bp_mod::*;
+use bp_container::*;
 
 // ################################################################
 
@@ -557,7 +557,7 @@ fn get_time() -> String {
 
 // ################################################################
 
-mod bp_mod {
+mod bp_container {
     use super::get_date;
     use super::get_time;
     use chrono::{DateTime, Datelike, NaiveDateTime, TimeDelta, Timelike, Utc};
