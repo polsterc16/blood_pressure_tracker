@@ -698,7 +698,7 @@ impl AnalyzeDayBuilder {
         Self::calc_min_max(&mut ret_item, bp_seq);
 
         // Calc Q1,Q2,Q3 & IQR & Whiskers
-        Self::calc_quartile(&mut ret_item, bp_seq);
+        Self::calc_quartile(&mut ret_item, bp_seq, 3.0);
 
         return ret_item;
     }
@@ -768,7 +768,7 @@ impl AnalyzeDayBuilder {
     ///
     /// Modifying the equation for `k` (and `a`) to use `N-1` instead of `N+1` causes the results \
     /// for `k` and `k+1` to stay inside the interval `[0,N-1]`, which is fitting for zero-based indexing.
-    pub fn calc_quartile(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence) {
+    pub fn calc_quartile(ret_item: &mut AnalyzeDay, bp_seq: &BpSequence, min_iqr: f32) {
         let vec_len: usize = bp_seq.get_meas_vec_len();
 
         // Array of quartile percentages p
@@ -806,6 +806,9 @@ impl AnalyzeDayBuilder {
             let res = &mut ret_item.0[idx_m];
             // Calc IQR (interquartile range)
             res.iqr = res.quartile[3] - res.quartile[1];
+            if min_iqr > res.iqr {
+                res.iqr = min_iqr;
+            }
 
             // Calc upper/lower whisker limits
             // Check for outliers outside whiskers
