@@ -35,7 +35,7 @@ struct Cli {
 // ################################################################
 
 #[derive(Serialize, Deserialize, DebugPretty)]
-struct FileHandler {
+pub struct FileHandler {
     path_dir: PathBuf,
     path_file: PathBuf,
 }
@@ -134,7 +134,7 @@ impl FileHandler {
 }
 
 #[derive(Serialize, Deserialize, DebugPretty)]
-struct FileHandlerCsv {
+pub struct FileHandlerCsv {
     fh_core: FileHandler,
 }
 impl FileHandlerCsv {
@@ -304,7 +304,7 @@ impl FileHandlerCsv {
 /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
 /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
 #[derive(Debug, PartialEq)]
-enum FileOpenMode {
+pub enum FileOpenMode {
     /// Open file in Read mode
     Read,
 
@@ -320,7 +320,7 @@ enum FileOpenMode {
 /// | `Missing`     | File does not exist                   |
 /// | `Exists(u64)` | File exists and is `u64` bytes long   |
 #[derive(Debug, PartialEq)]
-enum FileState {
+pub enum FileState {
     /// File does not exist
     Missing,
 
