@@ -558,9 +558,7 @@ fn get_time() -> String {
 // ################################################################
 
 mod bp_container {
-    use super::get_date;
-    use super::get_time;
-    use chrono::{DateTime, Datelike, NaiveDateTime, TimeDelta, Timelike, Utc};
+    use chrono::{DateTime, Datelike, Local, NaiveDateTime, TimeDelta, Timelike, Utc};
     use pretty_simple_display::DebugPretty;
     use serde::Deserialize;
     use serde::Serialize;
@@ -1584,5 +1582,12 @@ mod bp_container {
             self.M = date_time_utc.minute();
             self.S = date_time_utc.second();
         }
+    }
+
+    fn get_date() -> String {
+        Local::now().format("%Y-%m-%d").to_string()
+    }
+    fn get_time() -> String {
+        Local::now().format("%H:%M:%S").to_string()
     }
 }
