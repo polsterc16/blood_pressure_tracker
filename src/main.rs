@@ -314,6 +314,26 @@ pub enum FileOpenMode {
     /// Open (or create) file in Write mode: Append to previous content
     Append,
 }
+impl FileOpenMode {
+    /// Returns `true` if the file open mode is [`Read`].
+    ///
+    /// [`Read`]: FileOpenMode::Read
+    pub fn is_read(&self) -> bool {
+        matches!(self, Self::Read)
+    }
+    /// Returns `true` if the file open mode is [`Write`].
+    ///
+    /// [`Write`]: FileOpenMode::Write
+    pub fn is_write(&self) -> bool {
+        matches!(self, Self::Write)
+    }
+    /// Returns `true` if the file open mode is [`Append`].
+    ///
+    /// [`Append`]: FileOpenMode::Append
+    pub fn is_append(&self) -> bool {
+        matches!(self, Self::Append)
+    }
+}
 
 /// | `FileState`   | Meaning   |
 /// | ------------- | --------- |
@@ -326,6 +346,20 @@ pub enum FileState {
 
     /// File exists and is `u64` bytes long
     Exists(u64),
+}
+impl FileState {
+    /// Returns `true` if the file state is [`Missing`].
+    ///
+    /// [`Missing`]: FileState::Missing
+    pub fn is_missing(&self) -> bool {
+        matches!(self, Self::Missing)
+    }
+    /// Returns `true` if the file state is [`Exists`].
+    ///
+    /// [`Exists`]: FileState::Exists
+    pub fn is_exists(&self) -> bool {
+        matches!(self, Self::Exists(..))
+    }
 }
 
 // ################################################################
