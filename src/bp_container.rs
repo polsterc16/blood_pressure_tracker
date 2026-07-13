@@ -1,4 +1,5 @@
-use chrono::{DateTime, Datelike, Local, NaiveDateTime, TimeDelta, Timelike, Utc};
+use chrono::{DateTime, Datelike, Local, NaiveDateTime, TimeDelta, Utc};
+use polyfit::{self, MonomialFit, score, statistics::DegreeBound};
 use pretty_simple_display::DebugPretty;
 use serde::Deserialize;
 use serde::Serialize;
@@ -582,14 +583,14 @@ impl CollectionDay {
 
 #[derive(Serialize, Deserialize, DebugPretty)]
 pub struct CollectionMonth {
-    day_zero: DateTimeSimple,
+    day_zero: DateSimple,
     hash_map: CollDayHashType,
 }
 impl CollectionMonth {
     /// Create empty `CollectionMonth` obj
     pub fn new() -> Self {
         Self {
-            day_zero: DateTimeSimple::new(),
+            day_zero: DateSimple::new(),
             hash_map: HashMap::new(),
         }
     }
@@ -982,27 +983,103 @@ impl AnalyzeResult {
     }
 }
 
-#[derive(Serialize, Deserialize, DebugPretty)]
 #[allow(non_snake_case)]
-pub struct DateTimeSimple {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoxLilaq {
+    q1: f32,
+    #[serde(rename = "median")]
+    q2: f32,
+    q3: f32,
+    #[serde(rename = "whisker-low")]
+    wL: f32,
+    #[serde(rename = "whisker-high")]
+    wU: f32,
+}
+
+#[derive(Serialize, Deserialize, DebugPretty)]
+pub struct OutputMonth {
+    name: String,
+    day_0: DateSimple,
+    days: Vec<f32>,
+    seconds: Vec<i64>,
+    analysis: [Vec<BoxLilaq>; 3],
+    polyfit: [Vec<f32>; 3],
+}
+impl OutputMonth {
+    pub fn from_coll_month(cm: &CollectionMonth) -> Self {
+        let len = cm.hash_map.len();
+        let mut ret = Self {
+            name: String::new(),
+            day_0: cm.day_zero.clone(),
+            days: Vec::with_capacity(len),
+            seconds: Vec::with_capacity(len),
+            analysis: [
+                Vec::with_capacity(len),
+                Vec::with_capacity(len),
+                Vec::with_capacity(len),
+            ],
+            polyfit: [Vec::new(), Vec::new(), Vec::new()],
+        };
+
+        let mut content = Vec::from_iter(cm.hash_map.values());
+        content.sort_by_key(|f| f.sec);
+
+        for idx_d in 0..len {
+            let d = content[idx_d];
+            ret.days.push(d.day);
+            ret.seconds.push(d.sec);
+
+            for idx_m in 0..3 {
+                ret.analysis[idx_m].push(BoxLilaq {
+                    q1: d.analysis.0[idx_m].quartile[1],
+                    q2: d.analysis.0[idx_m].quartile[2],
+                    q3: d.analysis.0[idx_m].quartile[3],
+                    wL: d.analysis.0[idx_m].whisker_lower,
+                    wU: d.analysis.0[idx_m].whisker_upper,
+                });
+            }
+        }
+        ret.calc_polyfit();
+
+        return ret;
+    }
+    pub fn set_name(&mut self, n: &str) {
+        self.name = String::from(n)
+    }
+    fn calc_polyfit(&mut self) {
+        let len = self.days.len();
+        for idx_m in 0..3 {
+            let mut data: Vec<(f32, f32)> = Vec::with_capacity(len);
+            for idx_v in 0..len {
+                data.push((self.days[idx_v], self.analysis[idx_m][idx_v].q2));
+            }
+
+            let fit = MonomialFit::new_auto(&data, DegreeBound::Aggressive, &score::Aic)
+                .expect("Failed to create fit");
+
+            // polyfit::plot!(fit);
+            let coeff = fit.coefficients().to_vec();
+            // println!("[k = {}] {:?}", coeff.len(), coeff);
+            self.polyfit[idx_m] = coeff;
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, DebugPretty)]
+#[allow(non_snake_case)]
+pub struct DateSimple {
     timestamp: i64,
     Y: i32,
     m: u32,
     d: u32,
-    H: u32,
-    M: u32,
-    S: u32,
 }
-impl DateTimeSimple {
+impl DateSimple {
     pub fn new() -> Self {
         Self {
             timestamp: 0,
             Y: 0,
             m: 0,
             d: 0,
-            H: 0,
-            M: 0,
-            S: 0,
         }
     }
     pub fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
@@ -1011,9 +1088,6 @@ impl DateTimeSimple {
             Y: date_time_utc.year(),
             m: date_time_utc.month(),
             d: date_time_utc.day(),
-            H: date_time_utc.hour(),
-            M: date_time_utc.minute(),
-            S: date_time_utc.second(),
         }
     }
     pub fn set_utc(&mut self, date_time_utc: &DateTime<Utc>) {
@@ -1021,9 +1095,6 @@ impl DateTimeSimple {
         self.Y = date_time_utc.year();
         self.m = date_time_utc.month();
         self.d = date_time_utc.day();
-        self.H = date_time_utc.hour();
-        self.M = date_time_utc.minute();
-        self.S = date_time_utc.second();
     }
 }
 
