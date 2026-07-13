@@ -63,7 +63,7 @@ fn main() {
             worker_csv_rebuild(&csv_worker, &csv_collection);
         }
         if cli.output {
-            worker_output(&csv_collection);
+            worker_output(&csv_worker, &csv_collection);
         }
         if cli.status {
             worker_csv_status(&csv_collection);
@@ -74,18 +74,22 @@ fn main() {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_output(csv_collection: &CollectionCsv) {
+fn worker_output(csv_worker: &FileHandlerCsv, csv_collection: &CollectionCsv) {
     let coll_m2 = csv_collection.to_coll_m2(2);
 
     let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
 
-    println!("{coll_month:?}");
-    if true {
-        return;
-    }
-    println!("Attempt json export");
-    let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
-    println!("{pretty}");
+    let mut out_month = OutputMonth::from_coll_month(&coll_month);
+    out_month.set_name(&csv_worker.get_file_name());
+    println!("{out_month:?}");
+
+    // println!("{coll_month:?}");
+    // if true {
+    //     return;
+    // }
+    // println!("Attempt json export");
+    // let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
+    // println!("{pretty}");
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
