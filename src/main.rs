@@ -41,9 +41,11 @@ fn main() {
     let cli = Cli::parse();
     // println!("CLI: {:?}\n", &cli);
 
-    let file_str = format!("{}.csv", get_date_ym());
     let dir_str = "data";
-    let csv_worker = FileHandlerCsv::new(&dir_str, &file_str);
+    let file_name = format!("{}", get_date_ym());
+    // let file_name = String::from("2026-06");
+    let file_ext = "csv";
+    let csv_worker = FileHandlerCsv::new(&dir_str, &file_name, &file_ext);
 
     csv_worker.check_file().unwrap();
     // worker_init_csv();
@@ -189,29 +191,41 @@ mod file_warden {
     pub struct FileHandler {
         path_dir: PathBuf,
         path_file: PathBuf,
+        file_name: String,
+        file_ext: String,
     }
     impl FileHandler {
-        pub fn new(directory: &str, file: &str) -> Self {
+        pub fn new(directory: &str, file_name: &str, file_ext: &str) -> Self {
             let p_dir = Path::new(&directory).to_owned();
-            let p_file = Path::new(&directory).join(&file).to_owned();
+            let mut p_file = Path::new(&directory).join(&file_name).to_owned();
+            p_file.add_extension(file_ext);
 
             let ret_obj = Self {
                 path_dir: p_dir,
                 path_file: p_file,
+                file_name: String::from(file_name),
+                file_ext: String::from(file_ext),
             };
             ret_obj
         }
-        fn get_path_dir(&self) -> &PathBuf {
+        pub fn get_path_dir(&self) -> &PathBuf {
             &self.path_dir
         }
-        fn get_path_dir_str(&self) -> String {
+        pub fn get_path_dir_str(&self) -> String {
             self.get_path_dir().display().to_string()
         }
-        fn get_path_file(&self) -> &PathBuf {
+        pub fn get_path_file(&self) -> &PathBuf {
             &self.path_file
         }
-        fn get_path_file_str(&self) -> String {
+        pub fn get_path_file_str(&self) -> String {
             self.get_path_file().display().to_string()
+        }
+
+        pub fn get_file_name(&self) -> String {
+            self.file_name.clone()
+        }
+        pub fn get_file_ext(&self) -> String {
+            self.file_ext.clone()
         }
         /// Checks if directory exists and tries to create it, if not.
         ///
@@ -291,9 +305,9 @@ mod file_warden {
     impl FileHandlerCsv {
         const CSV_HEADER: &str = "date,time,sys,dia,pul";
 
-        pub fn new(directory: &str, file: &str) -> Self {
+        pub fn new(directory: &str, file_name: &str, file_ext: &str) -> Self {
             let ret_obj = Self {
-                fh_core: FileHandler::new(directory, file),
+                fh_core: FileHandler::new(directory, file_name, file_ext),
             };
 
             ret_obj
@@ -436,6 +450,12 @@ mod file_warden {
             ret_coll.sort();
 
             return Ok(ret_coll);
+        }
+        pub fn get_file_name(&self) -> String {
+            self.fh_core.get_file_name()
+        }
+        pub fn get_file_ext(&self) -> String {
+            self.fh_core.get_file_ext()
         }
     }
 
