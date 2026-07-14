@@ -470,6 +470,48 @@ mod file_warden {
     // ################################################################
     // ################################################################
 
+    #[derive(Serialize, Deserialize, DebugPretty)]
+    pub struct FileWardenJson {
+        fh_core: FileWarden,
+    }
+    impl FileWardenJson {
+        const FILE_EXTENSION: &str = "json";
+
+        pub fn new(directory: &str, file_name: &str) -> Self {
+            let ret_obj = Self {
+                fh_core: FileWarden::new(directory, file_name, Self::FILE_EXTENSION),
+            };
+
+            ret_obj
+        }
+
+        pub fn get_file_name(&self) -> String {
+            self.fh_core.get_file_name()
+        }
+        pub fn get_file_ext(&self) -> String {
+            self.fh_core.get_file_ext()
+        }
+
+        /// Will try to open the file.
+        ///
+        /// | `FileOpenMode` | Action    |
+        /// | -------------- | --------- |
+        /// | `Read`         | Open file in Read mode  |
+        /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
+        /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
+        ///
+        /// # anyhow::Errors
+        /// - Unable to open file (mode)
+        /// - Could not write `CSV_HEADER` to file
+        pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
+            let fh = self.fh_core.file_open(mode)?;
+            return Ok(fh);
+        }
+    }
+
+    // ################################################################
+    // ################################################################
+
     // #[derive(Debug, PartialEq)]
     // enum CsvOpenMode {
     //     Read,
