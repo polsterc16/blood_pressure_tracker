@@ -45,22 +45,22 @@ fn main() {
     let file_name = format!("{}", get_date_ym());
     // let file_name = String::from("2026-06");
     // let file_ext = "csv";
-    let csv_worker = FileWardenCsv::new(&dir_str, &file_name);
+    let mut csv_worker = FileWardenCsv::new(&dir_str, &file_name);
 
     csv_worker.check_file().unwrap();
     // worker_init_csv();
 
     match cli.add {
-        Some(bp) => worker_bp_add(&csv_worker, &bp),
+        Some(bp) => worker_bp_add(&mut csv_worker, &bp),
         _ => (),
     }
 
     if cli.rebuild || cli.status || cli.output {
         // let csv_collection = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
-        let csv_collection = csv_worker.get_csv_content().unwrap();
+        let mut csv_collection = csv_worker.get_csv_content().unwrap();
 
         if cli.rebuild {
-            worker_csv_rebuild(&csv_worker, &csv_collection);
+            worker_csv_rebuild(&mut csv_worker, &csv_collection);
         }
         if cli.output {
             worker_output(&csv_worker, &csv_collection);
@@ -80,7 +80,7 @@ fn worker_output(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
     let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
 
     let mut out_month = OutputMonth::from_coll_month(&coll_month);
-    out_month.set_name(&csv_worker.get_file_name());
+    out_month.set_name(&csv_worker.get_file_name().unwrap());
     println!("{out_month:?}");
 
     // println!("{coll_month:?}");
@@ -93,7 +93,7 @@ fn worker_output(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
+fn worker_csv_rebuild(csv_worker: &mut FileWardenCsv, csv_collection: &CollectionCsv) {
     // Open CSV File and reset content
     let fh_csv = csv_worker.file_open(&FileOpenMode::Write).unwrap();
 
@@ -128,7 +128,7 @@ fn worker_csv_status(csv_collection: &CollectionCsv) {
     }
 }
 
-fn worker_bp_add(csv_worker: &FileWardenCsv, bp: &Vec<f32>) {
+fn worker_bp_add(csv_worker: &mut FileWardenCsv, bp: &Vec<f32>) {
     let sys = bp[0];
     let dia = bp[1];
     let pul = bp[2];
@@ -193,58 +193,137 @@ mod file_warden {
 
     #[derive(Serialize, Deserialize, DebugPretty)]
     pub struct FileWarden {
-        path_dir: PathBuf,
-        path_file: PathBuf,
-        file_name: String,
-        file_ext: String,
+        path_dir: Option<PathBuf>,
+        path_file: Option<PathBuf>,
+        file_name: Option<String>,
+        file_ext: Option<String>,
+        update_file_path: bool,
     }
     impl FileWarden {
-        pub fn new(directory: &str, file_name: &str, file_ext: &str) -> Self {
-            let p_dir = Path::new(&directory).to_owned();
-            let mut p_file = Path::new(&directory).join(&file_name).to_owned();
-            p_file.add_extension(file_ext);
-
-            let ret_obj = Self {
-                path_dir: p_dir,
-                path_file: p_file,
-                file_name: String::from(file_name),
-                file_ext: String::from(file_ext),
+        fn empty() -> Self {
+            let mut ret_obj = Self {
+                path_dir: None,
+                path_file: None,
+                file_name: None,
+                file_ext: None,
+                update_file_path: true,
             };
-            ret_obj
+            ret_obj.set_path_dir(".");
+
+            return ret_obj;
         }
-        pub fn get_path_dir(&self) -> &PathBuf {
-            &self.path_dir
+        pub fn new_option(
+            directory: Option<&str>,
+            file_name: Option<&str>,
+            file_ext: Option<&str>,
+        ) -> Self {
+            let mut ret_obj = Self::empty();
+
+            if directory.is_some() {
+                ret_obj.set_path_dir(directory.unwrap());
+            }
+            if file_name.is_some() {
+                ret_obj.set_file_name(file_name.unwrap());
+            }
+            if file_ext.is_some() {
+                ret_obj.set_file_ext(file_ext.unwrap());
+            }
+            ret_obj.check_path_file();
+
+            return ret_obj;
         }
-        pub fn get_path_dir_str(&self) -> String {
-            self.get_path_dir().display().to_string()
+        pub fn new(directory: &str, file_name: &str, file_ext: &str) -> Self {
+            return Self::new_option(Some(directory), Some(file_name), Some(file_ext));
         }
-        pub fn get_path_file(&self) -> &PathBuf {
-            &self.path_file
-        }
-        pub fn get_path_file_str(&self) -> String {
-            self.get_path_file().display().to_string()
+        pub fn from_dir(directory: &str) -> Self {
+            return Self::new_option(Some(directory), None, None);
         }
 
-        pub fn get_file_name(&self) -> String {
-            self.file_name.clone()
+        pub fn set_path_dir(&mut self, directory: &str) {
+            self.update_file_path = true;
+            self.path_dir = Some(Path::new(&directory).to_owned());
         }
-        pub fn get_file_ext(&self) -> String {
+        pub fn get_path_dir(&self) -> Option<PathBuf> {
+            return self.path_dir.clone();
+        }
+        pub fn get_path_dir_str(&self) -> Option<String> {
+            match self.get_path_dir() {
+                Some(s) => Some(s.display().to_string()),
+                None => None,
+            }
+        }
+
+        pub fn set_file_name(&mut self, file_name: &str) {
+            self.update_file_path = true;
+            self.file_name = Some(String::from(file_name));
+        }
+        pub fn get_file_name(&self) -> Option<String> {
+            return self.file_name.clone();
+        }
+
+        pub fn set_file_ext(&mut self, file_ext: &str) {
+            self.update_file_path = true;
+
+            if file_ext.len() > 0 {
+                self.file_ext = Some(String::from(file_ext));
+            } else {
+                self.file_ext = None;
+            }
+        }
+        pub fn get_file_ext(&self) -> Option<String> {
             self.file_ext.clone()
         }
+
+        pub fn check_path_file(&mut self) -> bool {
+            if self.update_file_path {
+                self.update_path_file();
+            }
+            return self.update_file_path;
+        }
+        fn update_path_file(&mut self) {
+            let p = self.get_path_dir();
+            let f = self.get_file_name();
+            let ext = self.get_file_ext();
+
+            if p.is_some() && f.is_some() {
+                let p = p.unwrap();
+                let f = f.unwrap();
+
+                let mut p_file = p.join(&f).to_owned();
+                if ext.is_some() {
+                    let ext = ext.unwrap();
+                    p_file.add_extension(&ext);
+                }
+                self.path_file = Some(p_file);
+
+                self.update_file_path = false;
+            }
+        }
+        pub fn get_path_file(&mut self) -> Option<PathBuf> {
+            self.check_path_file();
+            return self.path_file.clone();
+        }
+        pub fn get_path_file_str(&mut self) -> Option<String> {
+            match self.get_path_file() {
+                Some(s) => Some(s.display().to_string()),
+                None => None,
+            }
+        }
+
         /// Checks if directory exists and tries to create it, if not.
         ///
         /// # anyhow::Errors
         /// - Unable to create directory
         pub fn check_directory(&self) -> anyhow::Result<()> {
-            let path_dir = self.get_path_dir();
+            let path_dir = self.get_path_dir().context("No directory set!")?;
 
             if path_dir.exists() {
                 return Ok(());
             }
             // log_warning(&format!("Directory missing: `{:?}`", path_dir,));
 
-            fs::create_dir(path_dir)
-                .context(format!("Unable to create directory: `{:?}`", path_dir))?;
+            fs::create_dir(&path_dir)
+                .context(format!("Unable to create directory: `{:?}`", &path_dir))?;
 
             // log_message(&format!("Directory created: `{:?}`", path_dir));
             return Ok(());
@@ -259,13 +338,13 @@ mod file_warden {
         ///
         /// # anyhow::Errors
         /// - Unable to get `metadata` of file
-        pub fn check_file_exists(&self) -> anyhow::Result<FileState> {
-            let path_file = self.get_path_file();
+        pub fn check_file_exists(&mut self) -> anyhow::Result<FileState> {
+            let path_file = self.get_path_file().context("No file/path set!")?;
 
             if !path_file.exists() {
                 return Ok(FileState::Missing);
             }
-            let metadata = fs::metadata(path_file).context(format!(
+            let metadata = fs::metadata(&path_file).context(format!(
                 "Unable to get `metadata` of file: `{:?}`",
                 path_file
             ))?;
@@ -281,21 +360,24 @@ mod file_warden {
         ///
         /// # anyhow::Errors
         /// - Unable to open file (mode)
-        pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
-            let path_file = self.get_path_file();
+        pub fn file_open(&mut self, mode: &FileOpenMode) -> anyhow::Result<File> {
+            let path_file = self.get_path_file().context("No file/path set!")?;
 
             let fh = match mode {
-                FileOpenMode::Read => OpenOptions::new().read(true).open(path_file),
+                FileOpenMode::Read => OpenOptions::new().read(true).open(&path_file),
                 FileOpenMode::Write => OpenOptions::new()
                     .write(true)
                     .create(true)
                     .truncate(true)
-                    .open(path_file),
-                FileOpenMode::Append => OpenOptions::new().write(true).append(true).open(path_file),
+                    .open(&path_file),
+                FileOpenMode::Append => {
+                    OpenOptions::new().write(true).append(true).open(&path_file)
+                }
             }
             .context(format!(
                 "Unable to open file (`{:?}`): `{:?}`",
-                mode, path_file,
+                mode,
+                path_file.display().to_string(),
             ))?;
 
             return Ok(fh);
@@ -313,12 +395,14 @@ mod file_warden {
         const CSV_HEADER: &str = "date,time,sys,dia,pul";
         const FILE_EXTENSION: &str = "csv";
 
-        pub fn new(directory: &str, file_name: &str) -> Self {
+        pub fn new_option(directory: Option<&str>, file_name: Option<&str>) -> Self {
             let ret_obj = Self {
-                fh_core: FileWarden::new(directory, file_name, Self::FILE_EXTENSION),
+                fh_core: FileWarden::new_option(directory, file_name, Some(Self::FILE_EXTENSION)),
             };
-
-            ret_obj
+            return ret_obj;
+        }
+        pub fn new(directory: &str, file_name: &str) -> Self {
+            Self::new_option(Some(directory), Some(file_name))
         }
         /// Check if file/directory exists
         /// - If missing: create with default content
@@ -337,7 +421,7 @@ mod file_warden {
         ///   - IO error while reading first line
         ///   - Major error: File is empty!
         ///   - File has missing/wrong csv header
-        pub fn check_file(&self) -> anyhow::Result<()> {
+        pub fn check_file(&mut self) -> anyhow::Result<()> {
             self.fh_core.check_directory()?;
 
             let f_state = self.fh_core.check_file_exists()?;
@@ -364,13 +448,13 @@ mod file_warden {
         /// - Unable to write to file
         /// - `self.file_open`
         ///   - Unable to open file (mode)
-        fn create_init_file(&self) -> anyhow::Result<()> {
+        fn create_init_file(&mut self) -> anyhow::Result<()> {
             let mode = FileOpenMode::Write;
-            let path_str = self.fh_core.get_path_file_str();
+            let path_file = self.fh_core.get_path_file().context("No file/path set!")?;
 
             let fh = self.file_open(&mode)?;
             fh.sync_all()
-                .context(format!("Unable to save file `{}`.", path_str))?;
+                .context(format!("Unable to save file `{}`.", path_file.display()))?;
 
             return Ok(());
         }
@@ -383,9 +467,9 @@ mod file_warden {
         /// - File has missing/wrong csv header
         /// - `self.file_open`
         ///   - Unable to open file (mode)
-        fn check_file_header(&self) -> anyhow::Result<()> {
+        fn check_file_header(&mut self) -> anyhow::Result<()> {
             let mode = FileOpenMode::Read;
-            let path_str = self.fh_core.get_path_file_str();
+            let path_file = self.fh_core.get_path_file().context("No file/path set!")?;
 
             let f_read = self.file_open(&mode)?;
 
@@ -402,7 +486,7 @@ mod file_warden {
             if !(Self::CSV_HEADER == &line[..]) {
                 bail!(
                     "File has missing/wrong csv header: `{}`\nT: [{}]\nF: [{}]",
-                    path_str,
+                    path_file.display(),
                     Self::CSV_HEADER,
                     &line[..]
                 );
@@ -421,7 +505,7 @@ mod file_warden {
         /// # anyhow::Errors
         /// - Unable to open file (mode)
         /// - Could not write `CSV_HEADER` to file
-        pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
+        pub fn file_open(&mut self, mode: &FileOpenMode) -> anyhow::Result<File> {
             let fh = self.fh_core.file_open(mode)?;
             match mode {
                 FileOpenMode::Write => {
@@ -435,7 +519,7 @@ mod file_warden {
             return Ok(fh);
         }
 
-        pub fn get_csv_content(&self) -> anyhow::Result<CollectionCsv> {
+        pub fn get_csv_content(&mut self) -> anyhow::Result<CollectionCsv> {
             let fh_csv = self.file_open(&FileOpenMode::Read)?;
 
             // create CSV reader
@@ -459,10 +543,10 @@ mod file_warden {
 
             return Ok(ret_coll);
         }
-        pub fn get_file_name(&self) -> String {
+        pub fn get_file_name(&self) -> Option<String> {
             self.fh_core.get_file_name()
         }
-        pub fn get_file_ext(&self) -> String {
+        pub fn get_file_ext(&self) -> Option<String> {
             self.fh_core.get_file_ext()
         }
     }
@@ -485,10 +569,10 @@ mod file_warden {
             ret_obj
         }
 
-        pub fn get_file_name(&self) -> String {
+        pub fn get_file_name(&self) -> Option<String> {
             self.fh_core.get_file_name()
         }
-        pub fn get_file_ext(&self) -> String {
+        pub fn get_file_ext(&self) -> Option<String> {
             self.fh_core.get_file_ext()
         }
 
@@ -503,7 +587,7 @@ mod file_warden {
         /// # anyhow::Errors
         /// - Unable to open file (mode)
         /// - Could not write `CSV_HEADER` to file
-        pub fn file_open(&self, mode: &FileOpenMode) -> anyhow::Result<File> {
+        pub fn file_open(&mut self, mode: &FileOpenMode) -> anyhow::Result<File> {
             let fh = self.fh_core.file_open(mode)?;
             return Ok(fh);
         }
