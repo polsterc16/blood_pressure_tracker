@@ -44,8 +44,8 @@ fn main() {
     let dir_str = "data";
     let file_name = format!("{}", get_date_ym());
     // let file_name = String::from("2026-06");
-    let file_ext = "csv";
-    let csv_worker = FileHandlerCsv::new(&dir_str, &file_name, &file_ext);
+    // let file_ext = "csv";
+    let csv_worker = FileHandlerCsv::new(&dir_str, &file_name);
 
     csv_worker.check_file().unwrap();
     // worker_init_csv();
@@ -308,10 +308,11 @@ mod file_warden {
     }
     impl FileHandlerCsv {
         const CSV_HEADER: &str = "date,time,sys,dia,pul";
+        const FILE_EXTENSION: &str = "csv";
 
-        pub fn new(directory: &str, file_name: &str, file_ext: &str) -> Self {
+        pub fn new(directory: &str, file_name: &str) -> Self {
             let ret_obj = Self {
-                fh_core: FileHandler::new(directory, file_name, file_ext),
+                fh_core: FileHandler::new(directory, file_name, Self::FILE_EXTENSION),
             };
 
             ret_obj
