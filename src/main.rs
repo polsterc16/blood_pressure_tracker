@@ -45,7 +45,7 @@ fn main() {
     let file_name = format!("{}", get_date_ym());
     // let file_name = String::from("2026-06");
     // let file_ext = "csv";
-    let csv_worker = FileHandlerCsv::new(&dir_str, &file_name);
+    let csv_worker = FileWardenCsv::new(&dir_str, &file_name);
 
     csv_worker.check_file().unwrap();
     // worker_init_csv();
@@ -74,7 +74,7 @@ fn main() {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_output(csv_worker: &FileHandlerCsv, csv_collection: &CollectionCsv) {
+fn worker_output(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
     let coll_m2 = csv_collection.to_coll_m2(2);
 
     let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
@@ -93,7 +93,7 @@ fn worker_output(csv_worker: &FileHandlerCsv, csv_collection: &CollectionCsv) {
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
-fn worker_csv_rebuild(csv_worker: &FileHandlerCsv, csv_collection: &CollectionCsv) {
+fn worker_csv_rebuild(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
     // Open CSV File and reset content
     let fh_csv = csv_worker.file_open(&FileOpenMode::Write).unwrap();
 
@@ -128,7 +128,7 @@ fn worker_csv_status(csv_collection: &CollectionCsv) {
     }
 }
 
-fn worker_bp_add(csv_worker: &FileHandlerCsv, bp: &Vec<f32>) {
+fn worker_bp_add(csv_worker: &FileWardenCsv, bp: &Vec<f32>) {
     let sys = bp[0];
     let dia = bp[1];
     let pul = bp[2];
@@ -306,10 +306,10 @@ mod file_warden {
     // ################################################################
 
     #[derive(Serialize, Deserialize, DebugPretty)]
-    pub struct FileHandlerCsv {
+    pub struct FileWardenCsv {
         fh_core: FileWarden,
     }
-    impl FileHandlerCsv {
+    impl FileWardenCsv {
         const CSV_HEADER: &str = "date,time,sys,dia,pul";
         const FILE_EXTENSION: &str = "csv";
 
