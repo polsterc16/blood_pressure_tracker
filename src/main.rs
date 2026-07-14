@@ -192,13 +192,13 @@ mod file_warden {
     use crate::bp_container::*;
 
     #[derive(Serialize, Deserialize, DebugPretty)]
-    pub struct FileHandler {
+    pub struct FileWarden {
         path_dir: PathBuf,
         path_file: PathBuf,
         file_name: String,
         file_ext: String,
     }
-    impl FileHandler {
+    impl FileWarden {
         pub fn new(directory: &str, file_name: &str, file_ext: &str) -> Self {
             let p_dir = Path::new(&directory).to_owned();
             let mut p_file = Path::new(&directory).join(&file_name).to_owned();
@@ -302,9 +302,12 @@ mod file_warden {
         }
     }
 
+    // ################################################################
+    // ################################################################
+
     #[derive(Serialize, Deserialize, DebugPretty)]
     pub struct FileHandlerCsv {
-        fh_core: FileHandler,
+        fh_core: FileWarden,
     }
     impl FileHandlerCsv {
         const CSV_HEADER: &str = "date,time,sys,dia,pul";
@@ -312,7 +315,7 @@ mod file_warden {
 
         pub fn new(directory: &str, file_name: &str) -> Self {
             let ret_obj = Self {
-                fh_core: FileHandler::new(directory, file_name, Self::FILE_EXTENSION),
+                fh_core: FileWarden::new(directory, file_name, Self::FILE_EXTENSION),
             };
 
             ret_obj
