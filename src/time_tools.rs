@@ -1,6 +1,88 @@
-use chrono::{DateTime, Datelike, Utc};
+use anyhow::bail;
+use chrono::{DateTime, Datelike, Local, Utc};
 use pretty_simple_display::DebugPretty;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+// ################################################################
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[allow(non_snake_case)]
+pub struct DateYearMonth {
+    pub year: i32,
+    pub month: i32,
+}
+impl fmt::Display for DateYearMonth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:04}-{:02}", self.year, self.month)
+    }
+}
+impl DateYearMonth {
+    pub fn new(year: i32, month: i32) -> Self {
+        if month > 12 || month < 1 {
+            panic!("`month` not valid: {}", month);
+        }
+        Self {
+            year: year,
+            month: month,
+        }
+    }
+    pub fn empty() -> Self {
+        return Self::new(2000, 1);
+    }
+    pub fn from_now() -> Self {
+        let now = Local::now();
+        return Self::new(now.year(), now.month() as i32);
+    }
+    pub fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
+        Self::new(date_time_utc.year(), date_time_utc.month() as i32)
+    }
+    pub fn set_ym(&mut self, year: i32, month: i32) -> anyhow::Result<()> {
+        if month > 12 || month < 1 {
+            bail!("`month` not valid: {}", month);
+        }
+        self.year = year;
+        self.month = month;
+
+        return anyhow::Ok(());
+    }
+    pub fn set_utc(&mut self, date_time_utc: &DateTime<Utc>) {
+        self.set_ym(date_time_utc.year(), date_time_utc.month() as i32)
+            .unwrap();
+    }
+    pub fn get_ym(&self) -> [i32; 2] {
+        [self.year, self.month]
+    }
+
+    pub fn add_months(&mut self, months: i32) -> anyhow::Result<()> {
+        // self.year = date_time_utc.year();
+        self.month += months;
+
+        let mut wdt = 100;
+
+        while self.month > 12 {
+            self.month -= 12;
+            self.year += 1;
+
+            wdt -= 1;
+            if wdt < 0 {
+                bail!("wdt timed out!");
+            }
+        }
+        while self.month < 1 {
+            self.month += 12;
+            self.year -= 1;
+
+            wdt -= 1;
+            if wdt < 0 {
+                bail!("wdt timed out!");
+            }
+        }
+        return anyhow::Ok(());
+    }
+}
+
+// ################################################################
 
 #[derive(Serialize, Deserialize, Clone, DebugPretty)]
 #[allow(non_snake_case)]
