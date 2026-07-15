@@ -1,8 +1,8 @@
-use anyhow::bail;
+use anyhow::{Context, bail};
 use chrono::{DateTime, Datelike, Local, Utc};
 use pretty_simple_display::DebugPretty;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 // ################################################################
 
@@ -15,6 +15,35 @@ pub struct DateYearMonth {
 impl fmt::Display for DateYearMonth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04}-{:02}", self.year, self.month)
+    }
+}
+impl FromStr for DateYearMonth {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        let date_str: &str = match s.split_once('.') {
+            Some((a, b)) => a,
+            None => s,
+        };
+        if date_str.len() != "2000-01".len() {
+            bail!("Unable to parse: `{}` (`yyyy-mm`)", s)
+        }
+
+        let year = date_str[0..4]
+            .parse::<i32>()
+            .context(format!("Unable to parse: `{}` (`yyyy-mm`)", s))?;
+        let month = date_str[5..]
+            .parse::<i32>()
+            .context(format!("Unable to parse: `{}` (`yyyy-mm`)", s))?;
+
+        if month > 12 || month < 1 {
+            bail!("Unable to parse: `{}` (`yyyy-mm`)", s)
+        }
+
+        return anyhow::Ok(Self {
+            year: year,
+            month: month,
+        });
     }
 }
 impl DateYearMonth {
@@ -37,6 +66,7 @@ impl DateYearMonth {
     pub fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
         Self::new(date_time_utc.year(), date_time_utc.month() as i32)
     }
+
     pub fn set_ym(&mut self, year: i32, month: i32) -> anyhow::Result<()> {
         if month > 12 || month < 1 {
             bail!("`month` not valid: {}", month);
