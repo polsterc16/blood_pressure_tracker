@@ -585,14 +585,14 @@ impl CollectionDay {
 
 #[derive(Serialize, Deserialize, DebugPretty)]
 pub struct CollectionMonth {
-    day_zero: DateSimple,
+    day_zero: DateSimpleJson,
     hash_map: CollDayHashType,
 }
 impl CollectionMonth {
     /// Create empty `CollectionMonth` obj
     pub fn new() -> Self {
         Self {
-            day_zero: DateSimple::new(),
+            day_zero: DateSimpleJson::new(),
             hash_map: HashMap::new(),
         }
     }
@@ -1001,7 +1001,7 @@ pub struct BoxLilaq {
 #[derive(Serialize, Deserialize, DebugPretty)]
 pub struct OutputMonth {
     name: String,
-    day_0: DateSimple,
+    day_0: DateSimpleJson,
     days: Vec<f32>,
     seconds: Vec<i64>,
     analysis: [Vec<BoxLilaq>; 3],

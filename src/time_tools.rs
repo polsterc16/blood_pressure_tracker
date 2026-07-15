@@ -4,14 +4,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, DebugPretty)]
 #[allow(non_snake_case)]
-pub struct DateSimple {
+pub struct DateSimpleJson {
     pub timestamp: i64,
     pub Y: i32,
     pub m: u32,
     pub d: u32,
 }
-
-impl DateSimple {
+impl DateSimpleJson {
     pub fn new() -> Self {
         Self {
             timestamp: 0,
