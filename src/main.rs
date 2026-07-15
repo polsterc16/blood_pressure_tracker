@@ -48,7 +48,14 @@ fn main() {
     let mut csv_worker = FileWardenCsv::new(&dir_str, &file_name);
 
     csv_worker.check_file().unwrap();
-    // worker_init_csv();
+
+    let json_worker = FileWardenJson::new_option(Some("output"), None);
+    let x = json_worker.get_dir_content();
+    println!("Content: {:?}", x);
+
+    if true {
+        return;
+    }
 
     match cli.add {
         Some(bp) => worker_bp_add(&mut csv_worker, &bp),
@@ -81,7 +88,7 @@ fn worker_output(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
 
     let mut out_month = OutputMonth::from_coll_month(&coll_month);
     out_month.set_name(&csv_worker.get_file_name());
-    println!("{out_month:?}");
+    // println!("{out_month:?}");
 
     // println!("{coll_month:?}");
     // if true {
@@ -184,6 +191,7 @@ fn get_time() -> String {
 mod file_warden {
     use anyhow::{Context, bail};
     use pretty_simple_display::DebugPretty;
+    use regex::Regex;
     use serde::{Deserialize, Serialize};
     use std::fs::{self, File, OpenOptions};
     use std::hash::{DefaultHasher, Hash, Hasher};
@@ -670,12 +678,12 @@ mod file_warden {
             let fh = self.fh_core.file_open(mode)?;
             return Ok(fh);
         }
-        pub fn get_dir_content(&self) -> Vec<String> {
-            let mut ret_vec: Vec<String> = Vec::new();
+        pub fn get_dir_content(&self) -> Vec<[i32; 2]> {
+            let mut ret_vec: Vec<[i32; 2]> = Vec::new();
 
-            // let pattern = format!("{}{}", r#"(\d{4})-(\d{2})\."#, Self::FILE_EXTENSION);
+            let pattern = format!("{}{}", r#"(\d{4})-(\d{2})\."#, Self::FILE_EXTENSION);
             // println!("Pattern: {}", &pattern);
-            // let re = Regex::new(&pattern).unwrap();
+            let re = Regex::new(&pattern).unwrap();
 
             if let Ok(read_dir) = fs::read_dir(self.get_directory()) {
                 for res_dir_entry in read_dir {
@@ -683,13 +691,12 @@ mod file_warden {
                         if let Ok(file_type) = dir_entry.file_type() {
                             if file_type.is_file() {
                                 if let Ok(f_name) = dir_entry.file_name().into_string() {
-                                    // use regex::Regex;
-
-                                    let mut file_name = f_name.clone();
-                                    if f_name.ends_with(Self::FILE_ENDING) {
-                                        let slice_len = f_name.len() - Self::FILE_ENDING.len();
-                                        let _ = file_name.split_off(slice_len);
-                                        ret_vec.push(file_name);
+                                    if let Some(caps) = re.captures(&f_name) {
+                                        if caps.len() == 3 {
+                                            let y: i32 = caps[1].parse().unwrap();
+                                            let m: i32 = caps[2].parse().unwrap();
+                                            ret_vec.push([y, m]);
+                                        }
                                     }
                                 }
                             }
