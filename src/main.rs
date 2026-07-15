@@ -67,7 +67,7 @@ fn main() {
 
     if cli.rebuild || cli.status || cli.output {
         // let csv_collection = read_csv_content().expect("Unable to perform 'Read of CSV File'.");
-        let mut csv_collection = csv_worker.get_csv_content().unwrap();
+        let csv_collection = csv_worker.get_csv_content().unwrap();
 
         if cli.rebuild {
             worker_csv_rebuild(&mut csv_worker, &csv_collection);
@@ -212,7 +212,7 @@ mod file_warden {
     }
     impl FileWarden {
         fn empty() -> Self {
-            let mut ret_obj = Self {
+            let ret_obj = Self {
                 path_dir: None,
                 path_file: None,
                 file_name: None,
