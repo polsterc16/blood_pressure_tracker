@@ -583,14 +583,14 @@ impl CollectionDay {
 
 #[derive(Serialize, Deserialize, DebugPretty)]
 pub struct CollectionMonth {
-    day_zero: DateSimple,
+    day_zero: time_tools::DateSimple,
     hash_map: CollDayHashType,
 }
 impl CollectionMonth {
     /// Create empty `CollectionMonth` obj
     pub fn new() -> Self {
         Self {
-            day_zero: DateSimple::new(),
+            day_zero: time_tools::DateSimple::new(),
             hash_map: HashMap::new(),
         }
     }
@@ -999,7 +999,7 @@ pub struct BoxLilaq {
 #[derive(Serialize, Deserialize, DebugPretty)]
 pub struct OutputMonth {
     name: String,
-    day_0: DateSimple,
+    day_0: time_tools::DateSimple,
     days: Vec<f32>,
     seconds: Vec<i64>,
     analysis: [Vec<BoxLilaq>; 3],
@@ -1065,36 +1065,43 @@ impl OutputMonth {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, DebugPretty)]
-#[allow(non_snake_case)]
-pub struct DateSimple {
-    timestamp: i64,
-    Y: i32,
-    m: u32,
-    d: u32,
-}
-impl DateSimple {
-    pub fn new() -> Self {
-        Self {
-            timestamp: 0,
-            Y: 0,
-            m: 0,
-            d: 0,
-        }
+mod time_tools {
+    use chrono::{DateTime, Datelike, Utc};
+    use pretty_simple_display::DebugPretty;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Clone, DebugPretty)]
+    #[allow(non_snake_case)]
+    pub struct DateSimple {
+        pub timestamp: i64,
+        pub Y: i32,
+        pub m: u32,
+        pub d: u32,
     }
-    pub fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
-        Self {
-            timestamp: date_time_utc.timestamp(),
-            Y: date_time_utc.year(),
-            m: date_time_utc.month(),
-            d: date_time_utc.day(),
+
+    impl DateSimple {
+        pub fn new() -> Self {
+            Self {
+                timestamp: 0,
+                Y: 0,
+                m: 0,
+                d: 0,
+            }
         }
-    }
-    pub fn set_utc(&mut self, date_time_utc: &DateTime<Utc>) {
-        self.timestamp = date_time_utc.timestamp();
-        self.Y = date_time_utc.year();
-        self.m = date_time_utc.month();
-        self.d = date_time_utc.day();
+        pub fn from_utc(date_time_utc: DateTime<Utc>) -> Self {
+            Self {
+                timestamp: date_time_utc.timestamp(),
+                Y: date_time_utc.year(),
+                m: date_time_utc.month(),
+                d: date_time_utc.day(),
+            }
+        }
+        pub fn set_utc(&mut self, date_time_utc: &DateTime<Utc>) {
+            self.timestamp = date_time_utc.timestamp();
+            self.Y = date_time_utc.year();
+            self.m = date_time_utc.month();
+            self.d = date_time_utc.day();
+        }
     }
 }
 
