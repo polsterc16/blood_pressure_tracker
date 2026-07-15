@@ -657,6 +657,50 @@ mod file_warden {
             Self::new_option(Some(directory), Some(file_name))
         }
 
+        /// Will try to open the file.
+        ///
+        /// | `FileOpenMode` | Action    |
+        /// | -------------- | --------- |
+        /// | `Read`         | Open file in Read mode  |
+        /// | `Write`        | Open (or create) file in Write mode: Overwrite and truncate previous content  |
+        /// | `Append`       | Open (or create) file in Write mode: Append to previous content               |
+        ///
+        /// # anyhow::Errors
+        pub fn file_open(&mut self, mode: &FileOpenMode) -> anyhow::Result<File> {
+            let fh = self.fh_core.file_open(mode)?;
+            return Ok(fh);
+        }
+        pub fn get_dir_content(&self) -> Vec<String> {
+            let mut ret_vec: Vec<String> = Vec::new();
+
+            // let pattern = format!("{}{}", r#"(\d{4})-(\d{2})\."#, Self::FILE_EXTENSION);
+            // println!("Pattern: {}", &pattern);
+            // let re = Regex::new(&pattern).unwrap();
+
+            if let Ok(read_dir) = fs::read_dir(self.get_directory()) {
+                for res_dir_entry in read_dir {
+                    if let Ok(dir_entry) = res_dir_entry {
+                        if let Ok(file_type) = dir_entry.file_type() {
+                            if file_type.is_file() {
+                                if let Ok(f_name) = dir_entry.file_name().into_string() {
+                                    // use regex::Regex;
+
+                                    let mut file_name = f_name.clone();
+                                    if f_name.ends_with(Self::FILE_ENDING) {
+                                        let slice_len = f_name.len() - Self::FILE_ENDING.len();
+                                        let _ = file_name.split_off(slice_len);
+                                        ret_vec.push(file_name);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return ret_vec;
+        }
+
         pub fn set_directory(&mut self, directory: &str) {
             self.fh_core.set_directory(directory);
         }
