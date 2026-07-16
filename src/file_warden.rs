@@ -272,7 +272,7 @@ impl FileWarden {
 // ################################################################
 // ################################################################
 
-#[derive(Serialize, Deserialize, DebugPretty)]
+#[derive(Serialize, Deserialize, DebugPretty, Clone)]
 pub struct FileWardenCsv {
     fh_core: FileWarden,
 }
@@ -473,12 +473,15 @@ impl FileWardenCsv {
     pub fn try_get_path_file(&self) -> anyhow::Result<PathBuf> {
         return self.fh_core.try_get_path_file();
     }
+    pub fn check_create_directory(&self) -> anyhow::Result<()> {
+        return self.fh_core.check_create_directory();
+    }
 }
 
 // ################################################################
 // ################################################################
 
-#[derive(Serialize, Deserialize, DebugPretty)]
+#[derive(Serialize, Deserialize, DebugPretty, Clone)]
 pub struct FileWardenJson {
     fh_core: FileWarden,
 }
@@ -574,6 +577,9 @@ impl FileWardenJson {
     }
     pub fn try_get_path_file(&self) -> anyhow::Result<PathBuf> {
         return self.fh_core.try_get_path_file();
+    }
+    pub fn check_create_directory(&self) -> anyhow::Result<()> {
+        return self.fh_core.check_create_directory();
     }
 }
 
