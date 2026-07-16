@@ -577,6 +577,26 @@ impl FileWardenJson {
     }
 }
 
+#[derive(Serialize, Deserialize, DebugPretty)]
+pub struct BpFileWarden {
+    pub csv_data: FileWardenCsv,
+    pub json_output: FileWardenJson,
+}
+impl BpFileWarden {
+    pub fn new(file_name: &str, dir_data: &str, dir_output: &str) -> Self {
+        Self {
+            csv_data: FileWardenCsv::new(dir_data, file_name),
+            json_output: FileWardenJson::new(dir_output, file_name),
+        }
+    }
+    pub fn get_mut_ref_csv(&mut self) -> &mut FileWardenCsv {
+        &mut self.csv_data
+    }
+    pub fn get_mut_ref_json(&mut self) -> &mut FileWardenJson {
+        &mut self.json_output
+    }
+}
+
 // ################################################################
 // ################################################################
 
