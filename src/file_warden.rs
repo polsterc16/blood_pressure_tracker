@@ -539,7 +539,11 @@ impl FileWardenJson {
                     if let Ok(file_type) = dir_entry.file_type() {
                         if file_type.is_file() {
                             if let Ok(f_name) = dir_entry.file_name().into_string() {
-                                match DateYearMonth::from_str(&f_name) {
+                                match DateYearMonth::from_str_constraint(
+                                    &f_name,
+                                    None,
+                                    Some(Self::FILE_ENDING),
+                                ) {
                                     Ok(dym) => ret_vec.push(dym),
                                     Err(_) => (),
                                 }
