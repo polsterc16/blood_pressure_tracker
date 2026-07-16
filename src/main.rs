@@ -60,9 +60,8 @@ fn main() {
     // let x = json_worker.get_dir_content();
     // println!("Content: {:?}", x);
 
-    match cli.add {
-        Some(bp) => worker_bp_add(&mut csv_worker, &bp),
-        _ => (),
+    if let Some(bp) = cli.add {
+        worker_bp_add(&mut csv_worker, &bp);
     }
 
     if cli.rebuild || cli.status || cli.output {
