@@ -204,7 +204,6 @@ fn get_time() -> String {
 mod file_warden {
     use anyhow::{Context, bail};
     use pretty_simple_display::DebugPretty;
-    use regex::Regex;
     use serde::{Deserialize, Serialize};
     use std::fs::{self, File, OpenOptions};
     use std::hash::{DefaultHasher, Hash, Hasher};
@@ -695,10 +694,6 @@ mod file_warden {
         }
         pub fn get_dir_content(&self) -> Vec<DateYearMonth> {
             let mut ret_vec: Vec<DateYearMonth> = Vec::new();
-
-            let pattern = format!("{}{}", r#"(\d{4})-(\d{2})\."#, Self::FILE_EXTENSION);
-            // println!("Pattern: {}", &pattern);
-            let re = Regex::new(&pattern).unwrap();
 
             if let Ok(read_dir) = fs::read_dir(self.get_directory()) {
                 for res_dir_entry in read_dir {
