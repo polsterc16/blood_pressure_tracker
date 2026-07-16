@@ -21,7 +21,7 @@ impl FromStr for DateYearMonth {
 
     fn from_str(s: &str) -> anyhow::Result<Self> {
         let date_str: &str = match s.split_once('.') {
-            Some((a, b)) => a,
+            Some((a, _)) => a,
             None => s,
         };
         if date_str.len() != "2000-01".len() {

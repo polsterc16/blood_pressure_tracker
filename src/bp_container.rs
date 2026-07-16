@@ -266,12 +266,12 @@ impl MeasCsv {
         self.pul
     }
     /// Returns the `date` field
-    pub fn get_date_str(&self) -> &str {
-        &self.date[..]
+    pub fn get_date_str(&self) -> String {
+        self.date.clone()
     }
     /// Returns the `time` field
-    pub fn get_time_str(&self) -> &str {
-        &self.time[..]
+    pub fn get_time_str(&self) -> String {
+        self.time.clone()
     }
     /// Get `DateTime<Utc>` from `String` fields `date`, `time`
     pub fn get_datetime(&self) -> DateTime<Utc> {
