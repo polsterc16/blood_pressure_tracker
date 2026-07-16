@@ -1008,7 +1008,7 @@ pub struct OutputMonth {
     polyfit: [Vec<f32>; 3],
 }
 impl OutputMonth {
-    pub fn from_coll_month(cm: &CollectionMonth) -> Self {
+    pub fn new(cm: &CollectionMonth) -> Self {
         let len = cm.hash_map.len();
         let mut ret = Self {
             name: String::new(),

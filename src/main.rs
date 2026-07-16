@@ -87,7 +87,7 @@ fn worker_output(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
 
     let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
 
-    let mut out_month = OutputMonth::from_coll_month(&coll_month);
+    let mut out_month = OutputMonth::new(&coll_month);
     out_month.set_name(&csv_worker.get_file_name());
     // println!("{out_month:?}");
 
