@@ -586,6 +586,17 @@ impl FileWardenJson {
     pub fn check_create_directory(&self) -> anyhow::Result<()> {
         return self.fh_core.check_create_directory();
     }
+
+    pub fn get_json_content(&mut self) -> anyhow::Result<OutputMonth> {
+        let fh_json = self.file_open(&FileOpenMode::Read)?;
+
+        let rdr = BufReader::new(fh_json);
+
+        let ret: OutputMonth =
+            serde_json::from_reader(rdr).context("Unable to use `serde_json::from_reader`!")?;
+
+        return anyhow::Ok(ret);
+    }
 }
 
 #[derive(Serialize, Deserialize, DebugPretty)]
