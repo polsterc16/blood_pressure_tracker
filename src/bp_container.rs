@@ -1153,7 +1153,7 @@ impl OutputMonth {
         for idx_m in 0..3 {
             let data = &data_vec[idx_m];
 
-            let fit = MonomialFit::new_auto(data, DegreeBound::Aggressive, &score::Aic)
+            let fit = MonomialFit::new_auto(data, DegreeBound::Relaxed, &score::Aic)
                 .expect("Failed to create fit");
 
             // polyfit::plot!(fit);
