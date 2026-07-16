@@ -66,7 +66,7 @@ impl DateYearMonth {
         Self::new(date_time_utc.year(), date_time_utc.month() as i32)
     }
 
-    fn from_str_constraint(
+    pub fn from_str_constraint(
         s: &str,
         prefix: Option<&str>,
         suffix: Option<&str>,
