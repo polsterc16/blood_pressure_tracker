@@ -682,6 +682,10 @@ impl CollectionMonth {
         vec_keys.sort();
         vec_keys
     }
+
+    pub fn get_dym(&self) -> DateYearMonth {
+        DateYearMonth::from_utc(self.day_zero.to_utc() + TimeDelta::days(1))
+    }
 }
 
 #[derive(Debug)]
