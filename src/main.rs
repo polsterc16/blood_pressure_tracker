@@ -45,14 +45,18 @@ fn main() {
     let cli = Cli::parse();
     // println!("CLI: {:?}\n", &cli);
 
+    let dir_data_str = "data";
+    let dir_output_str = "output";
+
     let dym_now = DateYearMonth::from_now();
-
-    let dir_str = "data";
     let file_name_now = dym_now.to_string();
-    // let file_name = String::from("2026-06");
-    // let file_ext = "csv";
-    let mut csv_worker = FileWardenCsv::new(&dir_str, &file_name_now);
 
+    let fw_data = FileWarden::new_option(Some(dir_data_str), Some(&file_name_now), None);
+    let fw_output = FileWarden::new_option(Some(dir_output_str), Some(&file_name_now), None);
+    fw_data.check_create_directory();
+    fw_output.check_create_directory();
+
+    let mut csv_worker = FileWardenCsv::from_file_warden(&fw_data);
     csv_worker.check_file().unwrap();
 
     // let json_worker = FileWardenJson::new_option(Some("output"), None);
