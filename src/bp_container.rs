@@ -1128,6 +1128,24 @@ impl OutputMonth {
                 ret_array[k].push((entry[0], entry[k + 1]));
             }
         }
+
+        // let day_first = ret_array[0][0].0;
+        // if day_first > -20.0 {
+        //     let mean_prev: [f64; 3] = [0_f64; 3];
+        //     for idx_m in 0..3 {
+        //         let vec_m = &ret_array[idx_m];
+        //         let mut vec_temp: Vec<f64> = Vec::new();
+
+        //         for entry in vec_m {
+        //             if entry.0 < 1.0 {
+        //                 vec_temp.push(entry.1);
+        //             }
+        //         }
+        //         let m = vec_temp.iter().fold(0.0, |x, y| x + y) / vec_temp.len() as f64;
+        //         ret_array[idx_m].push((-35.0, m));
+        //     }
+        // }
+
         return ret_array;
     }
     fn execute_polyfit(&mut self, data_vec: [Vec<(f64, f64)>; 3]) {
