@@ -445,7 +445,7 @@ impl FileWardenCsv {
         // Sort collection vector by fields date, time
         ret_coll.sort();
 
-        return Ok(ret_coll);
+        return anyhow::Ok(ret_coll);
     }
 
     pub fn set_directory(&mut self, directory: &str) {
@@ -530,7 +530,8 @@ impl FileWardenJson {
         let fh = self.fh_core.file_open(mode)?;
         return Ok(fh);
     }
-    pub fn get_dir_content(&self) -> Vec<DateYearMonth> {
+    /// returns Vec of `DateYearMonth` representing json-files in directory
+    pub fn get_dir_file_dym(&self) -> Vec<DateYearMonth> {
         let mut ret_vec: Vec<DateYearMonth> = Vec::new();
 
         if let Ok(read_dir) = fs::read_dir(self.get_directory()) {
