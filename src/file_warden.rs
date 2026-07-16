@@ -10,12 +10,27 @@ use std::str::FromStr;
 use crate::bp_container::*;
 use crate::time_tools::*;
 
-#[derive(Serialize, Deserialize, DebugPretty)]
+// ################################################################
+// ################################################################
+
+pub trait FileWardenTrait {
+    fn get_file_warden_ref(&self) -> &FileWarden;
+}
+
+// ################################################################
+// ################################################################
+
+#[derive(Serialize, Deserialize, DebugPretty, Clone)]
 pub struct FileWarden {
     path_dir: Option<PathBuf>,
     path_file: Option<PathBuf>,
     file_name: Option<String>,
     file_ext: Option<String>,
+}
+impl FileWardenTrait for FileWarden {
+    fn get_file_warden_ref(&self) -> &FileWarden {
+        &self
+    }
 }
 impl FileWarden {
     fn empty() -> Self {
@@ -261,6 +276,11 @@ impl FileWarden {
 pub struct FileWardenCsv {
     fh_core: FileWarden,
 }
+impl FileWardenTrait for FileWardenCsv {
+    fn get_file_warden_ref(&self) -> &FileWarden {
+        &self.fh_core
+    }
+}
 impl FileWardenCsv {
     const CSV_HEADER: &str = "date,time,sys,dia,pul";
     const FILE_EXTENSION: &str = "csv";
@@ -279,6 +299,14 @@ impl FileWardenCsv {
     }
     pub fn new(directory: &str, file_name: &str) -> Self {
         Self::new_option(Some(directory), Some(file_name))
+    }
+    pub fn from_file_warden(fw_like: &impl FileWardenTrait) -> Self {
+        let mut ret_obj = Self {
+            fh_core: fw_like.get_file_warden_ref().clone(),
+        };
+        ret_obj.fh_core.set_file_ext(Self::FILE_EXTENSION);
+
+        return ret_obj;
     }
     /// Check if file/directory exists
     /// - If missing: create with default content
@@ -454,6 +482,11 @@ impl FileWardenCsv {
 pub struct FileWardenJson {
     fh_core: FileWarden,
 }
+impl FileWardenTrait for FileWardenJson {
+    fn get_file_warden_ref(&self) -> &FileWarden {
+        &self.fh_core
+    }
+}
 impl FileWardenJson {
     const FILE_EXTENSION: &str = "json";
     const FILE_ENDING: &str = ".json";
@@ -471,6 +504,14 @@ impl FileWardenJson {
     }
     pub fn new(directory: &str, file_name: &str) -> Self {
         Self::new_option(Some(directory), Some(file_name))
+    }
+    pub fn from_file_warden(fw_like: &impl FileWardenTrait) -> Self {
+        let mut ret_obj = Self {
+            fh_core: fw_like.get_file_warden_ref().clone(),
+        };
+        ret_obj.fh_core.set_file_ext(Self::FILE_EXTENSION);
+
+        return ret_obj;
     }
 
     /// Will try to open the file.
