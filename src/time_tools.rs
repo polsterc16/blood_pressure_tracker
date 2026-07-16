@@ -144,4 +144,7 @@ impl DateSimpleJson {
         self.m = date_time_utc.month();
         self.d = date_time_utc.day();
     }
+    pub fn to_utc(&self) -> DateTime<Utc> {
+        DateTime::from_timestamp_secs(self.timestamp).unwrap()
+    }
 }
