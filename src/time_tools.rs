@@ -6,8 +6,7 @@ use std::{fmt, str::FromStr};
 
 // ################################################################
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct DateYearMonth {
     pub year: i32,
     pub month: i32,
