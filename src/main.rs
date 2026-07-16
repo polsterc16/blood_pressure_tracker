@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 mod bp_container;
 mod time_tools;
@@ -55,6 +56,15 @@ fn main() {
     let json_worker = FileWardenJson::new_option(Some("output"), None);
     let x = json_worker.get_dir_content();
     println!("Content: {:?}", x);
+
+    //
+    let dym = DateYearMonth::from_now();
+    let x = "2022 09.jpg";
+    println!("original: {}", x);
+    let y = DateYearMonth::from_str(&x).unwrap();
+    println!("DE:  {:?}", y);
+    let x = y.to_string();
+    println!("SER: {}", x);
 
     if true {
         return;
@@ -200,8 +210,10 @@ mod file_warden {
     use std::hash::{DefaultHasher, Hash, Hasher};
     use std::io::{BufRead, BufReader, Write};
     use std::path::{Path, PathBuf};
+    use std::str::FromStr;
 
     use crate::bp_container::*;
+    use crate::time_tools::*;
 
     #[derive(Serialize, Deserialize, DebugPretty)]
     pub struct FileWarden {
@@ -681,8 +693,8 @@ mod file_warden {
             let fh = self.fh_core.file_open(mode)?;
             return Ok(fh);
         }
-        pub fn get_dir_content(&self) -> Vec<[i32; 2]> {
-            let mut ret_vec: Vec<[i32; 2]> = Vec::new();
+        pub fn get_dir_content(&self) -> Vec<DateYearMonth> {
+            let mut ret_vec: Vec<DateYearMonth> = Vec::new();
 
             let pattern = format!("{}{}", r#"(\d{4})-(\d{2})\."#, Self::FILE_EXTENSION);
             // println!("Pattern: {}", &pattern);
@@ -694,12 +706,9 @@ mod file_warden {
                         if let Ok(file_type) = dir_entry.file_type() {
                             if file_type.is_file() {
                                 if let Ok(f_name) = dir_entry.file_name().into_string() {
-                                    if let Some(caps) = re.captures(&f_name) {
-                                        if caps.len() == 3 {
-                                            let y: i32 = caps[1].parse().unwrap();
-                                            let m: i32 = caps[2].parse().unwrap();
-                                            ret_vec.push([y, m]);
-                                        }
+                                    match DateYearMonth::from_str(&f_name) {
+                                        Ok(dym) => ret_vec.push(dym),
+                                        Err(_) => (),
                                     }
                                 }
                             }
