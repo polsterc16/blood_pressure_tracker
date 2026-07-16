@@ -93,17 +93,13 @@ fn worker_output(fw_bp: &mut BpFileWarden, csv_collection: &CollectionCsv) {
     let coll_month = CollectionMonth::from_coll_m2_consume(coll_m2);
 
     let mut out_month = OutputMonth::new(&coll_month, &fw_bp.json_output);
-    out_month.set_name(&fw_bp.csv_data.get_file_name());
+    let json_out = serde_json::to_string_pretty(&out_month).unwrap();
 
-    // println!("{out_month:?}");
-
-    // println!("{coll_month:?}");
-    // if true {
-    //     return;
-    // }
-    // println!("Attempt json export");
-    // let pretty = serde_json::to_string_pretty(&coll_month).unwrap(); // pretty-printed
-    // println!("{pretty}");
+    let fw_json_output = &mut fw_bp.json_output;
+    let fh_json = fw_json_output.file_open(&FileOpenMode::Write).unwrap();
+    writeln!(&fh_json, "{}", json_out)
+        .context("Could not write to file")
+        .unwrap();
 }
 
 /// Will read the CSV file, sort measurements and overwrite the file
