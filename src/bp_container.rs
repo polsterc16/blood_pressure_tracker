@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, NaiveDateTime, TimeDelta, Utc};
+use chrono::{DateTime, Duration, Local, NaiveDateTime, TimeDelta, Utc};
 use polyfit::{self, MonomialFit, score, statistics::DegreeBound};
 use pretty_simple_display::DebugPretty;
 use serde::Deserialize;
@@ -6,7 +6,9 @@ use serde::Serialize;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 
+use crate::file_warden::*;
 use crate::time_tools::*;
 
 // ################################################################
@@ -1008,35 +1010,50 @@ pub struct OutputMonth {
     day_0: DateSimpleJson,
     days: Vec<f32>,
     seconds: Vec<i64>,
+    polyfit: [Vec<f64>; 3],
     analysis: [Vec<BoxLilaq>; 3],
-    polyfit: [Vec<f32>; 3],
 }
 impl OutputMonth {
-    pub fn new(cm: &CollectionMonth) -> Self {
+    pub fn new(cm: &CollectionMonth, fw_json: &FileWardenJson) -> Self {
         let len = cm.hash_map.len();
-        let mut ret = Self {
+        let mut ret_obj = Self {
             name: String::new(),
             day_0: cm.day_zero.clone(),
             days: Vec::with_capacity(len),
             seconds: Vec::with_capacity(len),
+            polyfit: [Vec::new(), Vec::new(), Vec::new()],
             analysis: [
                 Vec::with_capacity(len),
                 Vec::with_capacity(len),
                 Vec::with_capacity(len),
             ],
-            polyfit: [Vec::new(), Vec::new(), Vec::new()],
         };
+        let dym_now = cm.get_dym();
+        ret_obj.set_name(&dym_now.to_string());
+        ret_obj.insert_content(cm);
 
+        ret_obj.calc_polyfit(fw_json);
+
+        return ret_obj;
+    }
+    pub fn set_name(&mut self, n: &str) {
+        self.name = String::from(n)
+    }
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+    /// Insert info from all `CollectionDay` obj into the `analysis` field
+    fn insert_content(&mut self, cm: &CollectionMonth) {
         let mut content = Vec::from_iter(cm.hash_map.values());
         content.sort_by_key(|f| f.sec);
 
-        for idx_d in 0..len {
+        for idx_d in 0..content.len() {
             let d = content[idx_d];
-            ret.days.push(d.day);
-            ret.seconds.push(d.sec);
+            self.days.push(d.day);
+            self.seconds.push(d.sec);
 
             for idx_m in 0..3 {
-                ret.analysis[idx_m].push(BoxLilaq {
+                self.analysis[idx_m].push(BoxLilaq {
                     q1: d.analysis.0[idx_m].quartile[1],
                     q2: d.analysis.0[idx_m].quartile[2],
                     q3: d.analysis.0[idx_m].quartile[3],
@@ -1045,22 +1062,85 @@ impl OutputMonth {
                 });
             }
         }
-        ret.calc_polyfit();
+    }
 
-        return ret;
+    fn calc_polyfit(&mut self, fw_json: &FileWardenJson) {
+        let data_vec = self.prepare_polyfit(fw_json);
+        self.execute_polyfit(data_vec);
     }
-    pub fn set_name(&mut self, n: &str) {
-        self.name = String::from(n)
-    }
-    fn calc_polyfit(&mut self) {
+    fn prepare_polyfit(&mut self, fw_json: &FileWardenJson) -> [Vec<(f64, f64)>; 3] {
+        let json_output_worker = fw_json.clone();
+
         let len = self.days.len();
-        for idx_m in 0..3 {
-            let mut data: Vec<(f32, f32)> = Vec::with_capacity(len);
-            for idx_v in 0..len {
-                data.push((self.days[idx_v], self.analysis[idx_m][idx_v].q2));
-            }
+        let mut coll: Vec<[f64; 4]> = Vec::with_capacity(len);
 
-            let fit = MonomialFit::new_auto(&data, DegreeBound::Aggressive, &score::Aic)
+        for idx_v in 0..len {
+            coll.push([
+                self.days[idx_v] as f64,
+                self.analysis[0][idx_v].q2 as f64,
+                self.analysis[1][idx_v].q2 as f64,
+                self.analysis[2][idx_v].q2 as f64,
+            ]);
+        }
+
+        // Try to get previous month
+        let json_dym = fw_json.get_dir_file_dym();
+        let dym_now = DateYearMonth::from_str(&fw_json.get_file_name()).unwrap();
+        let mut dym_prev = dym_now.clone();
+        dym_prev.add_months(-1);
+
+        println!("\tjson_dym: {json_dym:?}");
+        println!("\tdym_prev: {dym_prev:?}");
+        if json_dym.contains(&dym_prev) {
+            println!("dym_prev contains json_dym!");
+            let mut fw_json_prev = fw_json.clone();
+            fw_json_prev.set_file_name(&dym_prev.to_string());
+
+            let content_prev = fw_json_prev.get_json_content().unwrap();
+            let len = content_prev.days.len();
+            coll.reserve(len);
+
+            let d0_now = self.day_0.to_utc();
+            let d0_prev = content_prev.day_0.to_utc();
+            let td = d0_now - d0_prev;
+            let day_delta = td.num_seconds() as f64 / (24 * 60 * 60) as f64;
+
+            for idx_v in 0..len {
+                coll.push([
+                    (content_prev.days[idx_v] as f64) - day_delta,
+                    content_prev.analysis[0][idx_v].q2 as f64,
+                    content_prev.analysis[1][idx_v].q2 as f64,
+                    content_prev.analysis[2][idx_v].q2 as f64,
+                ]);
+            }
+        }
+        coll.sort_by(|a, b| a[0].total_cmp(&b[0]));
+
+        // println!("\n");
+        // for x in &coll {
+        //     println!("{x:?}");
+        // }
+
+        // OUTPUT of fn
+        let len = coll[0].len();
+        let mut ret_array: [Vec<(f64, f64)>; 3] = [
+            Vec::with_capacity(len),
+            Vec::with_capacity(len),
+            Vec::with_capacity(len),
+        ];
+        for entry in coll {
+            for k in 0..3 {
+                ret_array[k].push((entry[0], entry[k + 1]));
+            }
+        }
+        return ret_array;
+    }
+    fn execute_polyfit(&mut self, data_vec: [Vec<(f64, f64)>; 3]) {
+        // let len = self.days.len();
+        for idx_m in 0..3 {
+            let data = &data_vec[idx_m];
+
+            let fit = MonomialFit::new_auto(data, DegreeBound::Aggressive, &score::Aic)
                 .expect("Failed to create fit");
 
             // polyfit::plot!(fit);
