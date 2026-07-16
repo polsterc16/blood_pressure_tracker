@@ -46,30 +46,19 @@ fn main() {
     let cli = Cli::parse();
     // println!("CLI: {:?}\n", &cli);
 
+    let dym_now = DateYearMonth::from_now();
+
     let dir_str = "data";
-    let file_name = format!("{}", get_date_ym());
+    let file_name_now = dym_now.to_string();
     // let file_name = String::from("2026-06");
     // let file_ext = "csv";
-    let mut csv_worker = FileWardenCsv::new(&dir_str, &file_name);
+    let mut csv_worker = FileWardenCsv::new(&dir_str, &file_name_now);
 
     csv_worker.check_file().unwrap();
 
-    let json_worker = FileWardenJson::new_option(Some("output"), None);
-    let x = json_worker.get_dir_content();
-    println!("Content: {:?}", x);
-
-    //
-    let dym = DateYearMonth::from_now();
-    let x = "2022 09.jpg";
-    println!("original: {}", x);
-    let y = DateYearMonth::from_str(&x).unwrap();
-    println!("DE:  {:?}", y);
-    let x = y.to_string();
-    println!("SER: {}", x);
-
-    if true {
-        return;
-    }
+    // let json_worker = FileWardenJson::new_option(Some("output"), None);
+    // let x = json_worker.get_dir_content();
+    // println!("Content: {:?}", x);
 
     match cli.add {
         Some(bp) => worker_bp_add(&mut csv_worker, &bp),
@@ -87,7 +76,7 @@ fn main() {
             worker_output(&csv_worker, &csv_collection);
         }
         if cli.status {
-            worker_csv_status(&csv_collection);
+            worker_csv_status(&csv_worker, &csv_collection);
         }
     }
 
@@ -128,9 +117,9 @@ fn worker_csv_rebuild(csv_worker: &mut FileWardenCsv, csv_collection: &Collectio
     fh_csv.sync_all().context("Unable to save File .").unwrap();
 }
 
-fn worker_csv_status(csv_collection: &CollectionCsv) {
+fn worker_csv_status(csv_worker: &FileWardenCsv, csv_collection: &CollectionCsv) {
     let csv_entries = csv_collection.get_ref();
-    let date_ym = get_date_ym();
+    let date_ym = csv_worker.get_file_name();
 
     let csv_len = csv_entries.len();
     println!("File for '{date_ym}' contains {csv_len} entries.");
@@ -180,24 +169,14 @@ fn worker_bp_add(csv_worker: &mut FileWardenCsv, bp: &Vec<f32>) {
 //     ));
 // }
 
-fn log_message(msg: &str) {
-    println!("[MESSAGE]\t{msg}");
-}
-fn log_warning(wrn: &str) {
-    println!("[WARNING]\t{wrn}");
-}
-fn log_error(err: &str) {
-    println!("[ERROR]\t{err}");
-}
-
-fn get_date() -> String {
-    Local::now().format("%Y-%m-%d").to_string()
-}
-fn get_date_ym() -> String {
-    Local::now().format("%Y-%m").to_string()
-}
-fn get_time() -> String {
-    Local::now().format("%H:%M:%S").to_string()
-}
+// fn log_message(msg: &str) {
+//     println!("[MESSAGE]\t{msg}");
+// }
+// fn log_warning(wrn: &str) {
+//     println!("[WARNING]\t{wrn}");
+// }
+// fn log_error(err: &str) {
+//     println!("[ERROR]\t{err}");
+// }
 
 // ################################################################
