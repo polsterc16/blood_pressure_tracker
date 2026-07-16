@@ -1116,11 +1116,6 @@ impl OutputMonth {
         }
         coll.sort_by(|a, b| a[0].total_cmp(&b[0]));
 
-        // println!("\n");
-        // for x in &coll {
-        //     println!("{x:?}");
-        // }
-
         // OUTPUT of fn
         let len = coll[0].len();
         let mut ret_array: [Vec<(f64, f64)>; 3] = [
