@@ -66,6 +66,29 @@ impl DateYearMonth {
         Self::new(date_time_utc.year(), date_time_utc.month() as i32)
     }
 
+    fn from_str_constraint(
+        s: &str,
+        prefix: Option<&str>,
+        suffix: Option<&str>,
+    ) -> anyhow::Result<Self> {
+        let mut temp_str = String::from(s);
+
+        if let Some(pre) = prefix {
+            temp_str = match temp_str.strip_prefix(pre) {
+                Some(res) => String::from(res),
+                None => bail!("[Failed constraint] Does not start with `{pre}`: `{s}`"),
+            }
+        }
+        if let Some(suf) = suffix {
+            temp_str = match temp_str.strip_suffix(suf) {
+                Some(res) => String::from(res),
+                None => bail!("[Failed constraint] Does not end with `{suf}`: `{s}`"),
+            }
+        }
+
+        return Self::from_str(&temp_str);
+    }
+
     pub fn set_ym(&mut self, year: i32, month: i32) -> anyhow::Result<()> {
         if month > 12 || month < 1 {
             bail!("`month` not valid: {}", month);
