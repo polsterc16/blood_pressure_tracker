@@ -20,28 +20,24 @@ impl FromStr for DateYearMonth {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> anyhow::Result<Self> {
-        let date_str: &str = match s.split_once('.') {
-            Some((a, _)) => a,
-            None => s,
-        };
-        if date_str.len() != "2000-01".len() {
-            bail!("Unable to parse: `{}` (`yyyy-mm`)", s)
+        if s.len() != "2000-01".len() {
+            bail!("Unable to parse as `yyyy-mm`: `{}`", s)
         }
 
-        let year = date_str[0..4]
-            .parse::<i32>()
-            .context(format!("Unable to parse: `{}` (`yyyy-mm`)", s))?;
-        let month = date_str[5..]
-            .parse::<i32>()
-            .context(format!("Unable to parse: `{}` (`yyyy-mm`)", s))?;
+        let year = s[0..4]
+            .parse::<u32>()
+            .context(format!("Unable to parse as `yyyy-mm`: `{}`", s))?;
+        let month = s[5..]
+            .parse::<u32>()
+            .context(format!("Unable to parse as `yyyy-mm`: `{}`", s))?;
 
         if month > 12 || month < 1 {
-            bail!("Unable to parse: `{}` (`yyyy-mm`)", s)
+            bail!("Unable to parse (invalid month): `{}`", s)
         }
 
         return anyhow::Ok(Self {
-            year: year,
-            month: month,
+            year: year as i32,
+            month: month as i32,
         });
     }
 }
